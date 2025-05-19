@@ -12,7 +12,7 @@ class BallTracker:
     def detect_frame(self, frame):
         batch_size = 20
         detections = []
-        print("is cuda available?", torch.cuda.is_available())
+        # print("is cuda available?", torch.cuda.is_available())
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
         for i in range(0, len(frame), batch_size):
             batch = frame[i:i + batch_size]
@@ -21,7 +21,7 @@ class BallTracker:
             detections += results
         return detections
     
-    def get_object_tracks(self, frames):
+    def get_object_tracks(self, frames, read_from_stub=False, stub_path=None):
         detections = self.detect_frame(frames)
         tracks = []
         for frame_num,detection in enumerate(detections):
@@ -52,14 +52,6 @@ class BallTracker:
                         "class": "Basketball",
                         
                     }
-                elif cls_id == cls_names_inv['rim']:
-                    tracks[frame_num][2] = {
-                        "bbox": bbox,
-                        "class": "Rim",
-                        
-                    }
-            # if chosen_bbox is not None:
-            #     tracks[frame_num][1] = {"bbox":chosen_bbox}
                
 
 

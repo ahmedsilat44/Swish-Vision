@@ -49,7 +49,7 @@ from drawers.rim_tracks_drawer import RimTracksDrawer
 
 
 def main():
-    vidname = "vid1"
+    vidname = "vid7"
     video_frames = read_video(f"input_videos/{vidname}.mp4")
 
     ball_tracker = BallTracker(model_path="models/bestYT.pt")

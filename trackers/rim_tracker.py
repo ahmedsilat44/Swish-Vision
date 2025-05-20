@@ -52,15 +52,13 @@ class RimTracker:
         return tracks
 
     def interpolate_missing_tracks(self,rim_positions):
-            print("rim_positions",rim_positions)
-            rim_positions = [x.get(2, {}).get("bbox", []) for x in rim_positions]
-            print("rim_positions",rim_positions)
-            df_rim_positions = pd.DataFrame(rim_positions,columns=["x1", "y1", "x2", "y2"])
+            
+        rim_positions = [x.get(2, {}).get("bbox", []) for x in rim_positions]
+        df_rim_positions = pd.DataFrame(rim_positions,columns=["x1", "y1", "x2", "y2"])
 
-            df_rim_positions = df_rim_positions.interpolate()
-            df_rim_positions = df_rim_positions.bfill()
+        df_rim_positions = df_rim_positions.interpolate()
+        df_rim_positions = df_rim_positions.bfill()
 
-            rim_positions = [{2:{"bbox":x , "class": "Rim"}} for x in df_rim_positions.to_numpy().tolist()]
-            print("rim_positions",rim_positions)
+        rim_positions = [{2:{"bbox":x , "class": "Rim"}} for x in df_rim_positions.to_numpy().tolist()]
 
-            return rim_positions
+        return rim_positions

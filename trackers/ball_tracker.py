@@ -52,6 +52,12 @@ class BallTracker:
                         "class": "Basketball",
                         
                     }
+                elif cls_id == cls_names_inv['rim']:
+                    tracks[frame_num][2] = {
+                        "bbox": bbox,
+                        "class": "Rim",
+                        
+                    }
                
 
 
@@ -88,15 +94,13 @@ class BallTracker:
 
 
     def interpolate_missing_tracks(self,ball_positions):
-        print("ball_positions",ball_positions)
+
         ball_positions = [x.get(1, {}).get("bbox", []) for x in ball_positions]
-        print("ball_positions",ball_positions)
         df_ball_positions = pd.DataFrame(ball_positions,columns=["x1", "y1", "x2", "y2"])
 
         df_ball_positions = df_ball_positions.interpolate()
         df_ball_positions = df_ball_positions.bfill()
 
         ball_positions = [{1:{"bbox":x , "class": "Basketball"}} for x in df_ball_positions.to_numpy().tolist()]
-        print("ball_positions",ball_positions)
 
         return ball_positions

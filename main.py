@@ -43,6 +43,7 @@
 from utils import read_video, write_video
 from trackers.ball_tracker import BallTracker
 from trackers.rim_tracker import RimTracker
+from drawers.shot_tracker import ShotTracker
 from drawers.ball_tracks_drawer import BallTracksDrawer
 from drawers.rim_tracks_drawer import RimTracksDrawer
 
@@ -54,22 +55,28 @@ def main():
     rim_tracker = RimTracker(model_path="models/bestYT.pt")
 
     ball_tracks = ball_tracker.get_object_tracks(video_frames)
-    rim_tracks = rim_tracker.get_object_tracks(video_frames)
+    # rim_tracks = rim_tracker.get_object_tracks(video_frames)
 
     # ball_tracks = ball_tracker.remove_wrong_tracks(ball_tracks)
 
-    ball_tracks = ball_tracker.interpolate_missing_tracks(ball_tracks)
-    rim_tracks = rim_tracker.interpolate_missing_tracks(rim_tracks)
+    interpolated_ball_tracks = ball_tracker.interpolate_missing_tracks(ball_tracks)
+    rim_tracks = rim_tracker.interpolate_missing_tracks(ball_tracks)
 
     ball_tracks_drawer = BallTracksDrawer()
-    out_video_frames = ball_tracks_drawer.draw(video_frames, ball_tracks)
+    out_video_frames = ball_tracks_drawer.draw(video_frames, interpolated_ball_tracks)
 
     rim_tracks_drawer = RimTracksDrawer()
     two_out_video_frames = rim_tracks_drawer.draw(out_video_frames, rim_tracks)
 
+    shot_tracker = ShotTracker()
+    shot_tracker.detect_shot(two_out_video_frames, interpolated_ball_tracks, rim_tracks)
+    four_out_video_frames = shot_tracker.draw_shots(two_out_video_frames)
+
+
+
     # print(video_frames)
 
-    write_video(two_out_video_frames, "output_videos/output_video2.avi")
+    write_video(four_out_video_frames, "output_videos/output_video.avi")
 
 if __name__ == "__main__":
     main()

@@ -5,6 +5,7 @@ class BallTracksDrawer:
     def __init__(self):
         self.ball_tracks = {}  # Store ball centers by track_id
         self.max_trail_length = 30  # Limit trail length to avoid clutter
+        
 
     def draw(self,video_frames, tracks):
         

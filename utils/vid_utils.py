@@ -17,7 +17,7 @@ def write_video(frames, output_dir):
         os.mkdir(os.path.dirname(frames))
     
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    out = cv2.VideoWriter(output_dir, fourcc, 24.0, (frames[0].shape[1], frames[0].shape[0]))
+    out = cv2.VideoWriter(output_dir, fourcc, 30.0, (frames[0].shape[1], frames[0].shape[0]))
     for frame in frames:
         out.write(frame)
     out.release()

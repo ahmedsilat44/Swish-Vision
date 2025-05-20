@@ -52,11 +52,17 @@ class BallTracker:
                         "class": "Basketball",
                         
                     }
-                elif cls_id == cls_names_inv['rim']:
+                elif cls_id == cls_names_inv['net']:
+                    height = bbox[3] - bbox[1]
+                    # add a margin to the height
+                    margin = 0.5 * height
+                    # increase top of the bbox
+                    bbox[1] = bbox[1] - margin
+                    
+                    
                     tracks[frame_num][2] = {
                         "bbox": bbox,
                         "class": "Rim",
-                        
                     }
                
 

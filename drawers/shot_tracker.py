@@ -21,7 +21,6 @@ class ShotTracker:
         ball_box_height = 0
         
         for frame_num, frame in enumerate(video_frames):
-            frame = frame.copy()
             player_dict = ball_tracks[frame_num]
             rim_dict = rim_tracks[frame_num]
 
@@ -49,11 +48,11 @@ class ShotTracker:
                             rim_box = rim_track["bbox"]
                             rim_center = get_center(rim_box)
 
-                            if center[1] > rim_center[1]:
+                            if center[1] > rim_box[3]:
                                 # check if the current ball box is smaller or larger than the previous ball box
                                 current_ball_box_width = box[2] - box[0]
                                 current_ball_box_height = box[3] - box[1]
-                                if ((current_ball_box_width > ball_box_width * 1.05) and (current_ball_box_height > ball_box_height * 1.05)) or ((current_ball_box_width < ball_box_width * 0.95) and (current_ball_box_height < ball_box_height * 0.95)):
+                                if ((current_ball_box_width > ball_box_width * 1.2) and (current_ball_box_height > ball_box_height * 1.2)) or ((current_ball_box_width < ball_box_width * 0.8) and (current_ball_box_height < ball_box_height * 0.8)):
                                     # Ball is too big, ignore this shot
                                     self.shots.append({
                                         "frame": frame_num,
@@ -61,6 +60,8 @@ class ShotTracker:
                                         "center": center
                                     })
                                     pending_shot = False
+                                    print(frame_num, "False positive shot ignored")
+
                                     break
 
 
@@ -76,7 +77,9 @@ class ShotTracker:
                                 break
                             #  if ball is still above the rim then updated the latest ball point
                             else:
-                                latest_ball_point = center
+                                if center[1] < rim_box[1]:
+                                    latest_ball_point = center
+                                    frame = cv2.circle(frame, (int(center[0]), int(center[1])), 5, (0, 0,255), -1)
                                 break
                             
 
@@ -88,8 +91,8 @@ class ShotTracker:
 
                             rim_box = rim_track["bbox"]
                             rim_center = get_center(rim_box)
-
-                            if center[1] < rim_center[1]:
+                            # check if ball box bottom is above rim box top
+                            if center[1] < rim_box[1]:
                                 shot_zone_box = [
                                                 int(rim_box[0] - (rim_box[2] - rim_box[0]) * self.shot_zone_factor),
                                                 int(rim_box[1] - (rim_box[3] - rim_box[1]) * self.shot_zone_factor),
@@ -99,6 +102,8 @@ class ShotTracker:
                                 if self.is_in_shot_zone(center, shot_zone_box):
                                     pending_shot = True
                                     latest_ball_point = center
+                                    # draw point at the latest ball point
+                                    frame = cv2.circle(frame, (int(center[0]), int(center[1])), 5, (0,0, 255), -1)
                                     ball_box_width = box[2] - box[0]
                                     ball_box_height = box[3] - box[1]
                                     break
@@ -117,40 +122,37 @@ class ShotTracker:
         # Calculate the line equation y = mx + c using the two ball points
         x1, y1 = latest_ball_point
         x2, y2 = ball_point_below_rim
+      
+        
+       
 
+        m = (y2 - y1) / (x2 - x1) if x2 != x1 else 0
+        c = y1 - m * x1
 
+        # Get rim center from rim_track (should be dict of rim tracks for this frame)
+        rim_box = None
+        for rim in rim_track[frame_num].values():
+            if rim["bbox"] is not None:
+                rim_box = rim["bbox"]
+                break
+        if rim_box is None:
+            return None
 
-        if x2 == x1:
-            # Vertical line, use x directly
+        rim_center = get_center(rim_box)
+        adjustment = (rim_center[0] - rim_box[0] ) / 4
+        y_rim = rim_center[1]
+        # Solve for x when y = y_rim
+        if m == 0:
             x_at_rim = x1
         else:
-            m = (y2 - y1) / (x2 - x1)
-            c = y1 - m * x1
+            x_at_rim = (y_rim - c) / m
 
-            # Get rim center from rim_track (should be dict of rim tracks for this frame)
-            rim_box = None
-            for rim in rim_track[frame_num].values():
-                if rim["bbox"] is not None:
-                    rim_box = rim["bbox"]
-                    break
-            if rim_box is None:
-                return None
-
-            rim_center = get_center(rim_box)
-            adjustment = (rim_center[0] - rim_box[0] ) / 2
-            y_rim = rim_center[1]
-            # Solve for x when y = y_rim
-            if m == 0:
-                x_at_rim = x1
-            else:
-                x_at_rim = (y_rim - c) / m
-
-            # Check if x_at_rim is inside the rim bounding box
-            x1_rim, y1_rim, x2_rim, y2_rim = rim_box
-            if (x1_rim + adjustment) <= x_at_rim <= (x2_rim - adjustment):
-                return "make"
-            else:
-                return "miss"
+        # Check if x_at_rim is inside the rim bounding box
+        x1_rim, y1_rim, x2_rim, y2_rim = rim_box
+        if x1_rim <= x_at_rim <= x2_rim:
+            return "make"
+        else:
+            return "miss"
         
        
     

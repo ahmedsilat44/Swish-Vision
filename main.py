@@ -43,19 +43,34 @@
 from utils import read_video, write_video
 from trackers.ball_tracker import BallTracker
 from trackers.rim_tracker import RimTracker
+from trackers.human_tracker import HumanTracker
 from drawers.shot_tracker import ShotTracker
 from drawers.ball_tracks_drawer import BallTracksDrawer
 from drawers.rim_tracks_drawer import RimTracksDrawer
-
+from drawers.human_tracks_drawer import HumanTracksDrawer
 
 def main():
-    vidname = "vid7"
+    vidname = "vid9"
     video_frames = read_video(f"input_videos/{vidname}.mp4")
 
+
+    print("ball_tracker = BallTracker(model_path=")
     ball_tracker = BallTracker(model_path="models/bestYT.pt")
+
+    print("rim_tracker = RimTracker(model_path=")
     rim_tracker = RimTracker(model_path="models/bestYT.pt")
 
+    print("human_tracker = HumanTracker(model_path=")
+    human_tracker = HumanTracker(model_path="models/yolov8m-pose.pt")
+
+    print("ball_tracks = ball_tracker.get_object_tracks(video_frames)")
     ball_tracks = ball_tracker.get_object_tracks(video_frames)
+    
+
+    print("human_tracks = human_tracker.detect_frame(video_frames)")
+    human_tracks = human_tracker.detect_frame(video_frames)
+
+    
     # rim_tracks = rim_tracker.get_object_tracks(video_frames)
 
     # ball_tracks = ball_tracker.remove_wrong_tracks(ball_tracks)
@@ -69,9 +84,14 @@ def main():
     rim_tracks_drawer = RimTracksDrawer()
     two_out_video_frames = rim_tracks_drawer.draw(out_video_frames, rim_tracks)
 
+    # Add human keypoints drawing
+    human_tracks_drawer = HumanTracksDrawer()
+    three_out_video_frames = human_tracks_drawer.draw(two_out_video_frames, human_tracks, draw_boxes=False, draw_keypoints=True)
+
     shot_tracker = ShotTracker()
-    shot_tracker.detect_shot(two_out_video_frames, interpolated_ball_tracks, rim_tracks)
-    four_out_video_frames = shot_tracker.draw_shots(two_out_video_frames)
+    shot_tracker.detect_shot(three_out_video_frames, interpolated_ball_tracks, rim_tracks)
+
+    four_out_video_frames = shot_tracker.draw_shots(three_out_video_frames)
 
 
 

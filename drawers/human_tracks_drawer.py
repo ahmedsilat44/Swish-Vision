@@ -121,7 +121,7 @@ class HumanTracksDrawer:
             coord = kps_xy[parts]
             part = self.COCO_SKELETON_Names[parts]
             x = round(coord[0],4)
-            y = round(coord[0],4)
+            y = round(coord[1],4)
             coord = (x,y)
             cv2.putText(img, f"{part} coords: {coord}", (10, 60+offset), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
         
@@ -161,7 +161,8 @@ class HumanTracksDrawer:
         out_frames = []
         for i, frame in enumerate(video_frames):
             res = detections[i]
-            img = frame.copy()
+            # img = frame.copy()
+            img = frame
             current_angle = angles[i]
 
             # --- Boxes, labels, ids ---

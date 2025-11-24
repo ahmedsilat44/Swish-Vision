@@ -51,7 +51,8 @@ from drawers.human_tracks_drawer import HumanTracksDrawer
 
 def main():
     vidname = "vid11"
-    video_frames = read_video(f"input_videos/{vidname}.mp4")
+    print(f"Reading video: input_videos/{vidname}.mp4")
+    video_frames, fps = read_video(f"input_videos/{vidname}.mp4")
 
 
     print("ball_tracker = BallTracker(model_path=")
@@ -85,27 +86,37 @@ def main():
 
     ball_tracks_drawer = BallTracksDrawer()
     # out_video_frames = ball_tracks_drawer.draw(video_frames, ball_tracks)
+    print("1")
     out_video_frames = ball_tracks_drawer.draw(video_frames, interpolated_ball_tracks)
 
     rim_tracks_drawer = RimTracksDrawer()
+    print("2")
     two_out_video_frames = rim_tracks_drawer.draw(out_video_frames, rim_tracks)
 
     # Add human keypoints drawing
     human_tracks_drawer = HumanTracksDrawer()
+    print("3")
     three_out_video_frames = human_tracks_drawer.draw(two_out_video_frames, human_tracks, angles, draw_boxes=False, draw_keypoints=True)
     
 
     shot_tracker = ShotTracker()
-    shot_tracker.detect_shot(three_out_video_frames, interpolated_ball_tracks, rim_tracks)
+    print("4")
+    # shot_tracker.detect_shot(three_out_video_frames, interpolated_ball_tracks, rim_tracks)
+    shot_tracker.detect_shot(video_frames, interpolated_ball_tracks, rim_tracks)
     # shot_tracker.detect_shot(three_out_video_frames, ball_tracks, rim_tracks)
 
+    print("5")
     four_out_video_frames = shot_tracker.draw_shots(three_out_video_frames)
 
 
 
     print("Making video...")   
 
-    write_video(four_out_video_frames, f"output_videos/output_{vidname}.avi")
+    write_video(four_out_video_frames, f"output_videos/output_{vidname}_2.avi", fps=fps)
+    
+    ##if using this dont forget to change in vid_utils.py the fourcc to mp4v
+    # write_video(four_out_video_frames, f"output_videos/output_{vidname}.mp4", fps=fps) 
+
 
 if __name__ == "__main__":
     main()

@@ -12,6 +12,7 @@ class RimTracker:
     def detect_frame(self, frame):
         batch_size = 20
         detections = []
+        print("is cuda available?", torch.cuda.is_available())
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
         for i in range(0, len(frame), batch_size):
             batch = frame[i:i + batch_size]

@@ -226,7 +226,7 @@ class ShotTracker:
         last_shot_frame = self.shots[-1]["frame"]
 
         for frame_num, frame in enumerate(video_frames):
-            frame = frame.copy()
+            # frame = frame.copy()
             if frame_num < first_shot_frame:
                 frame = cv2.putText(frame, "No shots detected", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
             elif frame_num > last_shot_frame:

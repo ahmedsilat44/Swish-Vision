@@ -19,12 +19,32 @@ class HumanTracksDrawer:
         (5,11), (6,12),        # torso diagonals
         (0,1), (1,2), (2,3), (3,4), (0,5), (0,6)  # head/neck connections
     ]
+    COCO_SKELETON_Names = [
+        "Nose", 
+        "Left Eye", 
+        "Right Eye", 
+        "Left Ear", 
+        "Right Ear", 
+        "Left Shoulder", 
+        "Right Shoulder", 
+        "Left Elbow", 
+        "Right Elbow", 
+        "Left Wrist", 
+        "Right Wrist", 
+        "Left Hip", 
+        "Right Hip", 
+        "Left Knee", 
+        "Right Knee", 
+        "Left Ankle", 
+        "Right Ankle"
+    ]
 
     def __init__(
         self,
         box_color=(0, 255, 0),
         kp_color=(255, 0, 0),
         skeleton_color=(0, 255, 255),
+        skeleton_color_rhs=(255,20,147),
         text_color=(255, 255, 255),
         box_thickness=2,
         kp_radius=3,
@@ -35,6 +55,7 @@ class HumanTracksDrawer:
         self.box_color = box_color
         self.kp_color = kp_color
         self.skeleton_color = skeleton_color
+        self.skeleton_color_rhs = skeleton_color_rhs        
         self.text_color = text_color
         self.box_thickness = box_thickness
         self.kp_radius = kp_radius
@@ -81,12 +102,41 @@ class HumanTracksDrawer:
                 cb = kps_conf[b] if kps_conf[b] is not None else 1.0
                 if ca < conf_thr or cb < conf_thr:
                     continue
-            cv2.line(img, (int(xa), int(ya)), (int(xb), int(yb)), self.skeleton_color, self.sk_thickness)
+            if ((a,b) == (6, 8) or (a,b) == (8,10)):
+                cv2.line(img, (int(xa), int(ya)), (int(xb), int(yb)), self.skeleton_color_rhs, self.sk_thickness)
+            else:
+                cv2.line(img, (int(xa), int(ya)), (int(xb), int(yb)), self.skeleton_color, self.sk_thickness)
+            
+    def write_coords(self, img, kps_xy, kps_conf=None, conf_thr=0.2):
+        parts_oi = [6,8,10] #right arm stuff
+
+        # for parts in range(len(kps_xy)):
+        #     coord = kps_xy[parts]
+        #     part = self.COCO_SKELETON_Names[parts]
+        #     cv2.putText(img, f"{part} coords: {coord}", (10, 90+parts*30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+        
+        offset = 0
+        for parts in parts_oi:
+            offset += 30
+            coord = kps_xy[parts]
+            part = self.COCO_SKELETON_Names[parts]
+            x = round(coord[0],4)
+            y = round(coord[0],4)
+            coord = (x,y)
+            cv2.putText(img, f"{part} coords: {coord}", (10, 60+offset), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+        
+
+    def write_angles(self, img, angle):
+        angle = round(angle, 4)
+        cv2.putText(img, f"Right S-E-W angle: {angle}⁰", (10, 180), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+
+            
 
     def draw(
         self,
         video_frames,
         detections,
+        angles,
         draw_boxes=True,
         draw_keypoints=True,
         draw_labels=True,
@@ -105,10 +155,14 @@ class HumanTracksDrawer:
         Returns:
             list[np.ndarray]: frames with overlays (same length/order as input)
         """
+        with open("xy_coords.txt", "w") as f:
+            f.write("")
+
         out_frames = []
         for i, frame in enumerate(video_frames):
             res = detections[i]
             img = frame.copy()
+            current_angle = angles[i]
 
             # --- Boxes, labels, ids ---
             boxes = getattr(res, "boxes", None)
@@ -159,14 +213,21 @@ class HumanTracksDrawer:
                     pass
 
                 if kps_xy is not None:
-                    N = kps_xy.shape[0]
+                    N = kps_xy.shape[0] #num people
                     for n in range(N):
                         joints = [(float(x), float(y)) for x, y in kps_xy[n]]
                         if kps_cf is not None:
                             confs = [float(c) if c is not None else None for c in kps_cf[n]]
                         else:
                             confs = [1.0] * len(joints)
+
+                        # with open("xy_coords.txt", "a") as f:
+                        #     f.write(str(joints))
+                        #     f.write("\n")
+
                         self._draw_keypoints(img, joints, confs, conf_thr=kpt_thr)
+                        self.write_coords(img, joints, confs, conf_thr=kpt_thr)
+                        self.write_angles(img, current_angle)
 
             out_frames.append(img)
 

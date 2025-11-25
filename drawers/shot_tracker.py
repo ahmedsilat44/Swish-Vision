@@ -19,12 +19,20 @@ class ShotTracker:
     def detect_shot(self, video_frames, ball_tracks, rim_tracks):
         # iterate through each frame and then keep track of the ball and rim. keep track of the ball staying above or below the rim once the ball goes from below to above the room , save the latest point of the ball. Then check if the ball is in the shot zone of the rim. If it is, then put a pending flag. then check when the ball goes below the rim again and save that point.  Then using y = mx + c check if the ball is going in the rim or not. If it is, then save the shot event as a make. If it is not, then save the shot event as a miss.
         # also track the ball bounding box size so that ther eis a posssibility of false positive when ball is infront of the rim.
+        #also add a buffer so that shots are not detected too close to each other
+        min_frames_between_shots = 15
         pending_shot = False
         latest_ball_point = None
         ball_box_width = 0
         ball_box_height = 0
+        last_shot_frame = -8
+
+
         
         for frame_num, frame in enumerate(video_frames):
+            #  use min_frames_between_shots to avoid detecting shots too close to each other
+            if frame_num - last_shot_frame < min_frames_between_shots:
+                continue
             player_dict = ball_tracks[frame_num]
             rim_dict = rim_tracks[frame_num]
 
@@ -226,7 +234,7 @@ class ShotTracker:
         last_shot_frame = self.shots[-1]["frame"]
 
         for frame_num, frame in enumerate(video_frames):
-            frame = frame.copy()
+            # frame = frame.copy()
             if frame_num < first_shot_frame:
                 frame = cv2.putText(frame, "No shots detected", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
             elif frame_num > last_shot_frame:

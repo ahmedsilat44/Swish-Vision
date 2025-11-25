@@ -13,6 +13,7 @@ class HumanTracker:
     def detect_frame(self, frame):
         batch_size = 20
         detections = []
+        print("is cuda available?", torch.cuda.is_available())
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
         for i in range(0, len(frame), batch_size):
             batch = frame[i:i + batch_size]
@@ -85,8 +86,15 @@ class HumanTracker:
                     right_elbow = joints[8]
                     right_wrist = joints[10]
 
-                    angle = self.angle_bw_points(right_shoulder, right_elbow, right_wrist)
-                    anngles.append(angle)
+                    # Skip angle calculation if any keypoint is invalid (None or at origin)
+                    if (None in right_shoulder or None in right_elbow or None in right_wrist or
+                        (abs(right_shoulder[0]) < 1 and abs(right_shoulder[1]) < 1) or
+                        (abs(right_elbow[0]) < 1 and abs(right_elbow[1]) < 1) or
+                        (abs(right_wrist[0]) < 1 and abs(right_wrist[1]) < 1)):
+                        anngles.append(None)
+                    else:
+                        angle = self.angle_bw_points(right_shoulder, right_elbow, right_wrist)
+                        anngles.append(angle)
         return anngles
 
 

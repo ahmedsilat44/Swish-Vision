@@ -71,15 +71,18 @@ class BallTracker:
         return tracks
     
     def remove_wrong_tracks(self, tracks):
-        max_distance = 25  # Maximum distance to consider a track valid
+        max_distance = 500  # Maximum distance to consider a track valid
         last_good_track = -1
 
         for i in range(len(tracks)):
-            if len(tracks[i]) == 0:
+            # skip empty track entries
+            if not tracks[i]:
                 continue
-            current_box = tracks[i].get( 1, {}).get("bbox", [])
 
-            if len(current_box) == 0:
+            current_box = tracks[i].get(1, {}).get("bbox", [])
+
+            # ensure current_box has at least x1,y1 and x2,y2
+            if len(current_box) < 4:
                 continue
 
             if last_good_track == -1:
@@ -87,10 +90,24 @@ class BallTracker:
                 continue
 
             last_good_box = tracks[last_good_track].get(1, {}).get("bbox", [])
-            gap = i - last_good_track
-            adjusted_distance = max_distance - gap
+            # if last good box is malformed, treat current as new good
+            if len(last_good_box) < 4:
+                last_good_track = i
+                continue
 
-            if np.linalg.norm(np.array(last_good_box[:2]) - np.array(current_box[:2])) > adjusted_distance:
+            gap = i - last_good_track
+            # avoid negative thresholds when gap grows
+            adjusted_distance = max(max_distance - gap, 0)
+
+            # compute centers for a more robust distance check
+            current_center = np.array([(current_box[0] + current_box[2]) / 2.0,
+                                       (current_box[1] + current_box[3]) / 2.0])
+            last_center = np.array([(last_good_box[0] + last_good_box[2]) / 2.0,
+                                    (last_good_box[1] + last_good_box[3]) / 2.0])
+
+            distance = np.linalg.norm(last_center - current_center)
+
+            if distance > adjusted_distance:
                 # Remove the track 
                 tracks[i] = {}
             else:

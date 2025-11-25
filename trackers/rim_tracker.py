@@ -53,6 +53,9 @@ class RimTracker:
         return tracks
 
     def interpolate_missing_tracks(self,rim_positions):
+
+        if len(rim_positions) == 0:
+            return rim_positions
             
         rim_positions = [x.get(2, {}).get("bbox", []) for x in rim_positions]
         df_rim_positions = pd.DataFrame(rim_positions,columns=["x1", "y1", "x2", "y2"])

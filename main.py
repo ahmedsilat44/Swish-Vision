@@ -79,8 +79,8 @@ def main():
     
     # rim_tracks = rim_tracker.get_object_tracks(video_frames)
 
-    # ball_tracks = ball_tracker.remove_wrong_tracks(ball_tracks)
 
+    ball_tracks = ball_tracker.remove_wrong_tracks(ball_tracks)
     interpolated_ball_tracks = ball_tracker.interpolate_missing_tracks(ball_tracks)
     rim_tracks = rim_tracker.interpolate_missing_tracks(ball_tracks)
 
@@ -112,7 +112,7 @@ def main():
 
     print("Making video...")   
 
-    write_video(four_out_video_frames, f"output_videos/output_{vidname}_2.avi", fps=fps)
+    write_video(four_out_video_frames, f"output_videos/output_{vidname}_nowrongtracks.avi", fps=fps)
     
     ##if using this dont forget to change in vid_utils.py the fourcc to mp4v
     # write_video(four_out_video_frames, f"output_videos/output_{vidname}.mp4", fps=fps) 

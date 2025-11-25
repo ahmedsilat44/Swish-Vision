@@ -4,7 +4,7 @@ from .utils import draw_elipse, get_center, get_box_width, draw_trajectory
 class BallTracksDrawer:
     def __init__(self):
         self.ball_tracks = {}  # Store ball centers by track_id
-        self.max_trail_length = 30  # Limit trail length to avoid clutter
+        self.max_trail_length = 5  # Limit trail length to avoid clutter
         
 
     def draw(self,video_frames, tracks):
@@ -47,3 +47,4 @@ class BallTracksDrawer:
             output_video_frames.append(frame)
         
         return output_video_frames
+    

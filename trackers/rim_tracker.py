@@ -67,3 +67,49 @@ class RimTracker:
         rim_positions = [{2:{"bbox":x , "class": "Rim"}} for x in df_rim_positions.to_numpy().tolist()]
 
         return rim_positions
+    
+
+    def remove_wrong_tracks(self, tracks):
+        max_distance = 150  # Maximum distance to consider a track valid (increased for rim)
+        last_good_track = -1
+
+        for i in range(len(tracks)):
+            # skip empty track entries
+            if not tracks[i]:
+                continue
+
+            current_box = tracks[i].get(2, {}).get("bbox", [])  # Use track ID 2 for rim
+
+            # ensure current_box has at least x1,y1 and x2,y2
+            if len(current_box) < 4:
+                continue
+
+            if last_good_track == -1:
+                last_good_track = i
+                continue
+
+            last_good_box = tracks[last_good_track].get(2, {}).get("bbox", [])  # Use track ID 2 for rim
+            # if last good box is malformed, treat current as new good
+            if len(last_good_box) < 4:
+                last_good_track = i
+                continue
+
+            gap = i - last_good_track
+            # Reduce threshold as gap increases (rim should be stationary)
+            adjusted_distance = max(max_distance - (gap * 2), 10)
+
+            # compute centers for a more robust distance check
+            current_center = np.array([(current_box[0] + current_box[2]) / 2.0,
+                                       (current_box[1] + current_box[3]) / 2.0])
+            last_center = np.array([(last_good_box[0] + last_good_box[2]) / 2.0,
+                                    (last_good_box[1] + last_good_box[3]) / 2.0])
+
+            distance = np.linalg.norm(last_center - current_center)
+
+            if distance > adjusted_distance:
+                # Remove the track 
+                tracks[i] = {}
+            else:
+                last_good_track = i
+
+        return tracks

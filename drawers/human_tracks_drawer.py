@@ -85,6 +85,9 @@ class HumanTracksDrawer:
             x, y = kps_xy[i]
             if x is None or y is None:
                 continue
+            # Skip invalid coordinates (0,0) or very close to origin
+            if abs(x) < 1 and abs(y) < 1:
+                continue
             if kps_conf is not None and kps_conf[i] is not None and kps_conf[i] < conf_thr:
                 continue
             cv2.circle(img, (int(x), int(y)), self.kp_radius, self.kp_color, -1)
@@ -96,6 +99,9 @@ class HumanTracksDrawer:
             xa, ya = kps_xy[a]
             xb, yb = kps_xy[b]
             if None in (xa, ya, xb, yb):
+                continue
+            # Skip invalid coordinates (0,0) or very close to origin
+            if (abs(xa) < 1 and abs(ya) < 1) or (abs(xb) < 1 and abs(yb) < 1):
                 continue
             if kps_conf is not None:
                 ca = kps_conf[a] if kps_conf[a] is not None else 1.0
@@ -120,6 +126,18 @@ class HumanTracksDrawer:
             offset += 30
             coord = kps_xy[parts]
             part = self.COCO_SKELETON_Names[parts]
+            
+            # Check if coordinate is valid
+            if coord[0] is None or coord[1] is None:
+                cv2.putText(img, f"{part} coords: N/A", (10, 60+offset), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+                continue
+                
+            # Check confidence threshold
+            if kps_conf is not None and parts < len(kps_conf):
+                if kps_conf[parts] is not None and kps_conf[parts] < conf_thr:
+                    cv2.putText(img, f"{part} coords: Low confidence", (10, 60+offset), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+                    continue
+            
             x = round(coord[0],4)
             y = round(coord[1],4)
             coord = (x,y)
@@ -127,8 +145,12 @@ class HumanTracksDrawer:
         
 
     def write_angles(self, img, angle):
-        angle = round(angle, 4)
-        cv2.putText(img, f"Right S-E-W angle: {angle}⁰", (10, 180), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+        if angle is None:
+            cv2.putText(img, "Right S-E-W angle: N/A", (10, 180), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+        else:
+            angle = round(angle, 4)
+            cv2.putText(img, f"Right S-E-W angle: {angle} deg", (10, 180), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+
 
             
 

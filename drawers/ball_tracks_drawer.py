@@ -13,7 +13,7 @@ class BallTracksDrawer:
 
         for frame_num, frame in enumerate(video_frames):
 
-            frame = frame.copy()
+            # frame = frame.copy()
             # frame = cv2.flip(frame,0)
 
             player_dict = tracks[frame_num]

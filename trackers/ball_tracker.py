@@ -47,13 +47,15 @@ class BallTracker:
                 
                 
                 # if cls_id == cls_names_inv['ball']:
-                if cls_id == cls_names_inv['Basketball']:
+                # if cls_id == cls_names_inv['Basketball']:
+                if cls_id == cls_names_inv['basketball']:
                     tracks[frame_num][1] = {
                         "bbox": bbox,
                         "class": "Basketball",
                         
                     }
-                elif cls_id == cls_names_inv['Rim']:
+                # elif cls_id == cls_names_inv['Rim']:
+                elif cls_id == cls_names_inv['rim']:
                     height = bbox[3] - bbox[1]
                     # add a margin to the height
                     margin = 0.5 * height
@@ -72,7 +74,8 @@ class BallTracker:
         return tracks
     
     def remove_wrong_tracks(self, tracks):
-        max_distance = 500  # Maximum distance to consider a track valid
+        max_distance = 300  # Maximum distance to consider a track valid
+        max_gap = 30  # Maximum gap (frames) before resetting validation
         last_good_track = -1
 
         for i in range(len(tracks)):
@@ -97,8 +100,14 @@ class BallTracker:
                 continue
 
             gap = i - last_good_track
-            # avoid negative thresholds when gap grows
-            adjusted_distance = max(max_distance - gap, 0)
+            
+            # If gap is too large (ball was out of frame), reset and accept new detection
+            if gap > max_gap:
+                last_good_track = i
+                continue
+            
+            # Ball can move fast, so be more lenient with distance
+            adjusted_distance = max_distance
 
             # compute centers for a more robust distance check
             current_center = np.array([(current_box[0] + current_box[2]) / 2.0,

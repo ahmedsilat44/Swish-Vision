@@ -1,0 +1,14 @@
+names:
+- basketball
+- rim
+- sports ball
+nc: 3
+roboflow:
+  license: CC BY 4.0
+  project: basketball-1zhpe
+  url: https://universe.roboflow.com/eagle-eye/basketball-1zhpe/dataset/1
+  version: 1
+  workspace: eagle-eye
+test: ../test/images
+train: ../train/images
+val: ../valid/images

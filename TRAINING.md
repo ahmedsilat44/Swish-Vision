@@ -25,7 +25,15 @@ pip install ultralytics roboflow torch torchvision supervision pandas numpy open
 If you have internet access and can reach Roboflow servers:
 
 ```bash
+# Using default API key from dataset URL
 python train_model.py --download --epochs 100 --batch 16 --model-size n
+
+# Or with custom API key
+python train_model.py --download --api-key YOUR_API_KEY --epochs 100 --batch 16
+
+# Or using environment variable (more secure)
+export ROBOFLOW_API_KEY=your_api_key_here
+python train_model.py --download --epochs 100 --batch 16
 ```
 
 ### Method 2: Manual Download

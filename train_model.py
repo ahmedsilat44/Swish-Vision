@@ -25,24 +25,38 @@ from ultralytics import YOLO
 import torch
 
 
-def download_dataset_roboflow():
-    """Download the dataset from Roboflow using the API"""
+def download_dataset_roboflow(api_key=None, project_id=None):
+    """Download the dataset from Roboflow using the API
+    
+    Args:
+        api_key: Roboflow API key (if None, tries to load from env var ROBOFLOW_API_KEY)
+        project_id: Roboflow project ID (if None, uses default from dataset URL)
+    """
     if not ROBOFLOW_AVAILABLE:
         print("ERROR: roboflow package not installed. Install with: pip install roboflow")
         return None
     
+    # Get API key from environment variable if not provided
+    if api_key is None:
+        api_key = os.environ.get('ROBOFLOW_API_KEY', 'z3fhm33DMn')
+    
+    # Use project ID from the dataset URL if not provided
+    # The dataset URL format suggests using the dataset ID directly
+    if project_id is None:
+        project_id = "Dln6t1SSH6"
+    
     print("Downloading dataset from Roboflow...")
+    print(f"Note: Using dataset ID: {project_id}")
     
     try:
-        # Initialize Roboflow with the API key from the URL
-        rf = Roboflow(api_key="z3fhm33DMn")
+        # Initialize Roboflow with the API key
+        rf = Roboflow(api_key=api_key)
         
         # Get the workspace
         workspace = rf.workspace()
         
         # Access the dataset using the project ID
-        # Note: The actual project name/ID may need adjustment based on Roboflow structure
-        project = workspace.project("basketball-detection")
+        project = workspace.project(project_id)
         
         # Download the dataset in YOLOv8 format
         dataset = project.version(1).download("yolov8")
@@ -119,6 +133,10 @@ def main():
                         help='Download dataset from Roboflow')
     parser.add_argument('--data', type=str, 
                         help='Path to data.yaml file')
+    parser.add_argument('--api-key', type=str,
+                        help='Roboflow API key (can also use ROBOFLOW_API_KEY env var)')
+    parser.add_argument('--project-id', type=str,
+                        help='Roboflow project ID (default: Dln6t1SSH6)')
     parser.add_argument('--epochs', type=int, default=100,
                         help='Number of training epochs (default: 100)')
     parser.add_argument('--batch', type=int, default=16,
@@ -134,7 +152,10 @@ def main():
     
     # Download dataset if requested
     if args.download:
-        data_path = download_dataset_roboflow()
+        data_path = download_dataset_roboflow(
+            api_key=args.api_key,
+            project_id=args.project_id
+        )
         if data_path:
             data_yaml = os.path.join(data_path, 'data.yaml')
         else:

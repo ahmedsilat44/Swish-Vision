@@ -114,7 +114,7 @@ class HumanTracksDrawer:
                 cv2.line(img, (int(xa), int(ya)), (int(xb), int(yb)), self.skeleton_color, self.sk_thickness)
             
     def write_coords(self, img, kps_xy, kps_conf=None, conf_thr=0.2):
-        parts_oi = [6,8,10] #right arm stuff
+        parts_oi = [6,8,10,12] #right arm stuff
 
         # for parts in range(len(kps_xy)):
         #     coord = kps_xy[parts]
@@ -144,13 +144,18 @@ class HumanTracksDrawer:
             cv2.putText(img, f"{part} coords: {coord}", (10, 60+offset), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
         
 
-    def write_angles(self, img, angle):
-        if angle is None:
-            cv2.putText(img, "Right S-E-W angle: N/A", (10, 180), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+    def write_angles(self, img, angle_sew, angle_esh):
+        if angle_sew is None:
+            cv2.putText(img, "Right S-E-W angle: N/A", (10, 210), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
         else:
-            angle = round(angle, 4)
-            cv2.putText(img, f"Right S-E-W angle: {angle} deg", (10, 180), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+            angle_sew = round(angle_sew, 4)
+            cv2.putText(img, f"Right S-E-W angle: {angle_sew} deg", (10, 210), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
+        if angle_esh is None:
+            cv2.putText(img, "Right E-S-H angle: N/A", (10, 240), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+        else:
+            angle_esh = round(angle_esh, 4)
+            cv2.putText(img, f"Right E-S-H angle: {angle_esh} deg", (10, 240), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
             
 
@@ -185,7 +190,8 @@ class HumanTracksDrawer:
             res = detections[i]
             # img = frame.copy()
             img = frame
-            current_angle = angles[i]
+            current_angle_sew = angles[0][i]
+            current_angle_esh = angles[1][i]
 
             # --- Boxes, labels, ids ---
             boxes = getattr(res, "boxes", None)
@@ -250,7 +256,7 @@ class HumanTracksDrawer:
 
                         self._draw_keypoints(img, joints, confs, conf_thr=kpt_thr)
                         self.write_coords(img, joints, confs, conf_thr=kpt_thr)
-                        self.write_angles(img, current_angle)
+                        self.write_angles(img, current_angle_sew, current_angle_esh)
 
             out_frames.append(img)
 

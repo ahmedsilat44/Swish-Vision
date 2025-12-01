@@ -48,9 +48,10 @@ from drawers.shot_tracker import ShotTracker
 from drawers.ball_tracks_drawer import BallTracksDrawer
 from drawers.rim_tracks_drawer import RimTracksDrawer
 from drawers.human_tracks_drawer import HumanTracksDrawer
+from utils.ball_hand import ball_hand
 
 def main():
-    vidname = "vid11"
+    vidname = "vid14"
     print(f"Reading video: input_videos/{vidname}.mp4")
     video_frames, fps = read_video(f"input_videos/{vidname}.mp4")
 
@@ -73,6 +74,9 @@ def main():
     print("human_tracks = human_tracker.detect_frame(video_frames)")
     human_tracks = human_tracker.detect_frame(video_frames)
     angles = human_tracker.calc_angles(video_frames, human_tracks)
+    points = human_tracker.get_points(video_frames, human_tracks)
+
+
 
     with open("angs.txt", "w") as f:
         f.write(str(angles))
@@ -85,8 +89,13 @@ def main():
     ball_tracks = ball_tracker.remove_wrong_tracks(ball_tracks)
     rim_tracks = rim_tracker.remove_wrong_tracks(ball_tracks)
     interpolated_ball_tracks = ball_tracker.interpolate_missing_tracks(ball_tracks)
+    
+    ball_loco = ball_tracker.get_ball_loco(video_frames, interpolated_ball_tracks)
     rim_tracks = rim_tracker.interpolate_missing_tracks(rim_tracks)
 
+    ball_left_frames = ball_hand(ball_loco, points, video_frames)
+
+    # Drawers
     ball_tracks_drawer = BallTracksDrawer()
     # out_video_frames = ball_tracks_drawer.draw(video_frames, ball_tracks)
     print("1")
@@ -111,15 +120,24 @@ def main():
     print("5")
     four_out_video_frames = shot_tracker.draw_shots(three_out_video_frames)
 
+    five_out_video_frames = ball_tracks_drawer.draw_ball_left(four_out_video_frames, ball_left_frames)
 
+
+    print(f"Ball left frames: {ball_left_frames}")
 
     print("Making video...")   
 
-    write_video(four_out_video_frames, f"output_videos/output_{vidname}_best.avi", fps=fps)
-    
+   # write_video(four_out_video_frames, f"output_videos/output_{vidname}_second_angle.avi", fps=fps)
+    write_video(five_out_video_frames, f"output_videos/output_{vidname}_ball_left.avi", fps=fps)
+
     ##if using this dont forget to change in vid_utils.py the fourcc to mp4v
     # write_video(four_out_video_frames, f"output_videos/output_{vidname}.mp4", fps=fps) 
 
-
+    # print(len(ball_loco))
+    # print(len(angles[0]))
+    # print(len(angles[1]))
+    # print(len(points))
+    # print(len(video_frames))
+    
 if __name__ == "__main__":
     main()

@@ -57,45 +57,109 @@ class HumanTracker:
     def calc_angles(
         self,
         video_frames,
-        detections):
-        
-        anngles = [] #shoulder-elbow-wrist
+        detections
+    ):
+        angles = ([], [])  # [0] = shoulder-elbow-wrist, [1] = elbow-shoulder-hip
+
         for i, frame in enumerate(video_frames):
             res = detections[i]
 
-            # --- Keypoints ---
+            # --- Keypoints object (may be None) ---
             kps = getattr(res, "keypoints", None)
-            kps_xy = kps.xy.cpu().numpy()  # shape: [N, K, 2]
-            kps_cf = kps.conf.cpu().numpy()  # [N, K]
 
-            if kps_xy is not None:
-                N = kps_xy.shape[0]
-                for n in range(N): #num peoplpe
-                    joints = [(float(x), float(y)) for x, y in kps_xy[n]]
-                    if kps_cf is not None:
-                        confs = [float(c) if c is not None else None for c in kps_cf[n]]
-                    else:
-                        confs = [1.0] * len(joints)
+            # If no keypoints at all for this frame
+            if kps is None or getattr(kps, "xy", None) is None:
+                angles[0].append(None)
+                angles[1].append(None)
+                continue
 
-                    with open("xy_coords.txt", "a") as f:
-                        f.write(str(joints))
-                        f.write("\n")
-                    
-                    # parts_oi = [6,8,10] #right arm stuff
-                    right_shoulder = joints[6]
-                    right_elbow = joints[8]
-                    right_wrist = joints[10]
+            # Convert to numpy
+            kps_xy = kps.xy.cpu().numpy()  # shape: [N, K, 2] (N = num people)
+            kps_cf = getattr(kps, "conf", None)
+            if kps_cf is not None:
+                kps_cf = kps_cf.cpu().numpy()
 
-                    # Skip angle calculation if any keypoint is invalid (None or at origin)
-                    if (None in right_shoulder or None in right_elbow or None in right_wrist or
-                        (abs(right_shoulder[0]) < 1 and abs(right_shoulder[1]) < 1) or
-                        (abs(right_elbow[0]) < 1 and abs(right_elbow[1]) < 1) or
-                        (abs(right_wrist[0]) < 1 and abs(right_wrist[1]) < 1)):
-                        anngles.append(None)
-                    else:
-                        angle = self.angle_bw_points(right_shoulder, right_elbow, right_wrist)
-                        anngles.append(angle)
-        return anngles
+            N = kps_xy.shape[0]
 
+            # If no people detected
+            if N == 0:
+                angles[0].append(None)
+                angles[1].append(None)
+                continue
 
-    
+            person_idx = 0
+
+            joints = [(float(x), float(y)) for x, y in kps_xy[person_idx]]
+
+            # Optional: write joints to file for debugging
+            with open("xy_coords.txt", "a") as f:
+                f.write(str(joints))
+                f.write("\n")
+
+            # Indices: 6 = right shoulder, 8 = right elbow, 10 = right wrist, 12 = right hip
+            right_shoulder = joints[6]
+            right_elbow = joints[8]
+            right_wrist = joints[10]
+            right_hip = joints[12]
+
+            # Helper to check if a point is invalid (None or near-origin)
+
+            def invalid_point(p):
+                if p is None:
+                    return True
+                x, y = p
+                if x is None or y is None:
+                    return True
+                # filter out (0,0) or nearly zero coords
+                return (abs(x) < 1 and abs(y) < 1)
+
+            # Skip if any of the keypoints we need is invalid
+            if (invalid_point(right_shoulder) or
+                invalid_point(right_elbow) or
+                invalid_point(right_wrist) or
+                invalid_point(right_hip)):
+                angles[0].append(None)
+                angles[1].append(None)
+                continue
+
+            angle_sew = self.angle_bw_points(right_shoulder, right_elbow, right_wrist)
+            angle_esh = self.angle_bw_points(right_elbow, right_shoulder, right_hip)
+
+            angles[0].append(angle_sew)
+            angles[1].append(angle_esh)
+
+        return angles
+
+    def get_points(
+        self,
+        video_frames,
+        detections
+    ):
+        all_points = []
+
+        for i, frame in enumerate(video_frames):
+            res = detections[i]
+
+            # --- Keypoints object (may be None) ---
+            kps = getattr(res, "keypoints", None)
+
+            # If no keypoints at all for this frame
+            if kps is None or getattr(kps, "xy", None) is None:
+                all_points.append(None)
+                continue
+
+            # Convert to numpy
+            kps_xy = kps.xy.cpu().numpy()  # shape: [N, K, 2] (N = num people)
+            kps_cf = getattr(kps, "conf", None)
+            if kps_cf is not None:
+                kps_cf = kps_cf.cpu().numpy()
+
+            N = kps_xy.shape[0]
+
+            # If no people detected
+            person_idx = 0
+
+            joints = [(float(x), float(y)) for x, y in kps_xy[person_idx]]
+            all_points.append(joints)
+
+        return all_points

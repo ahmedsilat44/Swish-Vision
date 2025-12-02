@@ -48,8 +48,7 @@ from drawers.shot_tracker import ShotTracker
 from drawers.ball_tracks_drawer import BallTracksDrawer
 from drawers.rim_tracks_drawer import RimTracksDrawer
 from drawers.human_tracks_drawer import HumanTracksDrawer
-from utils.ball_hand import ball_hand
-import utils.analysis
+from utils.ball_hand import ball_hand, shot_started
 
 def main():
     vidname = "vid14_1"
@@ -95,8 +94,11 @@ def main():
     rim_tracks = rim_tracker.interpolate_missing_tracks(rim_tracks)
 
     ball_left_frames = ball_hand(ball_loco, points, video_frames)
+    print(f"Ball left frames: {ball_left_frames}")
 
-    
+    shot_starts = shot_started(points, ball_left_frames)
+    print(f"Shot starts: {shot_starts}")
+
 
     # Drawers
     ball_tracks_drawer = BallTracksDrawer()
@@ -112,7 +114,10 @@ def main():
     human_tracks_drawer = HumanTracksDrawer()
     print("3")
     three_out_video_frames = human_tracks_drawer.draw(two_out_video_frames, human_tracks, angles, draw_boxes=False, draw_keypoints=True)
-    
+    four_out_video_frames = human_tracks_drawer.analysis(three_out_video_frames, angles, ball_left_frames, shot_starts)
+
+
+
 
     shot_tracker = ShotTracker()
     print("4")
@@ -121,17 +126,16 @@ def main():
     # shot_tracker.detect_shot(three_out_video_frames, ball_tracks, rim_tracks)
 
     print("5")
-    four_out_video_frames = shot_tracker.draw_shots(three_out_video_frames)
+    five_out_video_frames = shot_tracker.draw_shots(four_out_video_frames)
 
-    five_out_video_frames = ball_tracks_drawer.draw_ball_left(four_out_video_frames, ball_left_frames)
+    six_out_video_frames = ball_tracks_drawer.draw_ball_left(five_out_video_frames, ball_left_frames)
 
 
-    print(f"Ball left frames: {ball_left_frames}")
 
     print("Making video...")   
 
    # write_video(four_out_video_frames, f"output_videos/output_{vidname}_second_angle.avi", fps=fps)
-    write_video(five_out_video_frames, f"output_videos/output_{vidname}_final.avi", fps=fps)
+    write_video(six_out_video_frames, f"output_videos/output_{vidname}_final_final.avi", fps=fps)
 
     ##if using this dont forget to change in vid_utils.py the fourcc to mp4v
     # write_video(four_out_video_frames, f"output_videos/output_{vidname}.mp4", fps=fps) 

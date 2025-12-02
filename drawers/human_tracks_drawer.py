@@ -85,7 +85,7 @@ class HumanTracksDrawer:
             x, y = kps_xy[i]
             if x is None or y is None:
                 continue
-            # Skip invalid coordinates (0,0) or very close to origin
+            # Skip invalid_grp coordinates (0,0) or very close to origin
             if abs(x) < 1 and abs(y) < 1:
                 continue
             if kps_conf is not None and kps_conf[i] is not None and kps_conf[i] < conf_thr:
@@ -100,7 +100,7 @@ class HumanTracksDrawer:
             xb, yb = kps_xy[b]
             if None in (xa, ya, xb, yb):
                 continue
-            # Skip invalid coordinates (0,0) or very close to origin
+            # Skip invalid_grp coordinates (0,0) or very close to origin
             if (abs(xa) < 1 and abs(ya) < 1) or (abs(xb) < 1 and abs(yb) < 1):
                 continue
             if kps_conf is not None:
@@ -127,7 +127,7 @@ class HumanTracksDrawer:
             coord = kps_xy[parts]
             part = self.COCO_SKELETON_Names[parts]
             
-            # Check if coordinate is valid
+            # Check if coordinate is valid_grp
             if coord[0] is None or coord[1] is None:
                 cv2.putText(img, f"{part} coords: N/A", (10, 60+offset), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
                 continue
@@ -262,5 +262,118 @@ class HumanTracksDrawer:
 
         return out_frames
 
-    def analysis():
-        pass
+    def analysis(self, frames, angles, leave_frames, shot_starts):
+        with open("./report.txt", "w") as f:
+            f.write("")
+
+        lookback_frames=3
+        # shoulder-elbow-wrist
+        sew_min_thresh = 65
+        sew_max_thresh = 75   
+        # elbow-shoulder-hip
+        esh_min_thresh = 120
+        esh_max_thresh = 135   
+
+        sew_list, esh_list = angles
+
+        # 2) For each "shot" (unique leave_frame), analyze angle window
+        for shot_num, frame_num in enumerate(leave_frames):
+            if (shot_num >= len(shot_starts)):
+                continue
+            start = shot_starts[shot_num]
+            end = frame_num  
+            # print(f"start: {start} end: {end}")
+
+            # Extract windowed angles (guard against length mismatch)
+            sew_grp = sew_list[start:end+1] 
+            esh_grp = esh_list[start:end+1] 
+
+            # Convert to numpy arrays and ignore Nones if present
+            sew_valid_grp = [a for a in sew_grp if a is not None]
+            esh_valid_grp = [a for a in esh_grp if a is not None]
+
+            # print(f"sew_valid_grp for shot {shot_num+1}: {sew_valid_grp}")
+            # print(f"esh_valid_grp for shot {shot_num+1}: {esh_valid_grp}")
+        
+            if sew_valid_grp:
+                sew_avg = round(sum(sew_valid_grp) / len(sew_valid_grp),4)
+                sew_min = round(min(sew_valid_grp),4)
+                sew_max = round(max(sew_valid_grp),4)
+            else:
+                sew_avg = sew_min = sew_max = None
+
+            if esh_valid_grp:
+                esh_avg = round(sum(esh_valid_grp) / len(esh_valid_grp),4)
+                esh_min = round(min(esh_valid_grp),4)
+                esh_max = round(max(esh_valid_grp),4)
+            else:
+                esh_avg = esh_min = esh_max = None
+
+            # 3) Compare to thresholds (you can change logic later)
+            # For now: classify form as "GOOD" or "NEEDS WORK" with simple rules
+            issues = []
+
+            if sew_min is not None:
+                if (sew_min <= sew_min_thresh):
+                    issues.append(f"Your SEW angle ({sew_min} deg) is too low. Open your elbows!")
+                    issues.append(f"Try to keep it between {sew_min_thresh} deg and {sew_max_thresh} deg.")
+                elif (sew_min >= sew_max_thresh):
+                    issues.append(f"Your SEW angle ({sew_min} deg) is too high. Close your elbow!")
+                    issues.append(f"Try to keep it between {sew_min_thresh} deg and {sew_max_thresh} deg.")
+                else:
+                    issues.append(f"No issues with SEW")
+            else:
+                issues.append("missing arm angles")
+
+            if esh_min is not None:
+                if (esh_max <= esh_min_thresh):
+                    issues.append(f"Your ESH angle ({esh_max} deg) is too low. Shoot with more arc!")
+                    issues.append(f"Try to keep it between {esh_min_thresh} deg and {esh_max_thresh} deg.")
+                elif (esh_max >= esh_max_thresh):
+                    issues.append(f"Your ESH angle ({esh_max} deg) is too high. Shoot with less arc!")
+                    issues.append(f"Try to keep it between {esh_min_thresh} deg and {esh_max_thresh} deg.")
+                else:
+                    issues.append(f"No issue with ESH")
+            else:
+                issues.append("missing torso angles")
+
+            if len(issues) == 0:
+                verdict = "GOOD FORM"
+            else:
+                verdict = [f"shot {shot_num+1}"] + ["NEEDS WORK: "] + issues
+
+
+            with open("./report.txt", "a") as f:
+                for item in verdict:
+                    f.write(str(item))
+                    f.write("\n")
+                f.write("\n")
+
+            # 4) Draw analysis text on the leave_frame itself
+            linger = 30*3
+            for k in range(0, linger):   # 0 to 29 → 30 frames
+                draw_frame_index = frame_num + k
+                if draw_frame_index >= len(frames):
+                    break
+
+                frame = frames[draw_frame_index]
+                
+                if sew_avg is not None and esh_avg is not None:
+                    text2 = f"SEW min={sew_min}° max={sew_max}° avg={round(sew_avg,4)}°   |   ESH min={esh_min}° max={esh_max}° avg={round(esh_avg,4)}°"
+                else:
+                    text2 = "SEW avg=NA  ESH avg=NA"
+
+                
+                offset = 0
+                for txt in verdict:
+                    offset += 30
+                    cv2.putText(frame, txt, (10, 400+offset), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2, cv2.LINE_AA)
+                    
+
+                cv2.putText(frame, text2, (10, 430+offset), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 1, cv2.LINE_AA)
+
+                frames[draw_frame_index] = frame
+
+        return frames
+
+        

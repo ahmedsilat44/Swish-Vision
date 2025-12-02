@@ -114,38 +114,71 @@ def ball_hand(ball_loco, points, frames):
         # ---- Detect transition: ball was in hand → now not ----
         if prev_ball_valid and in_hand_prev  and not in_hand  and not is_dribble  and not ball_is_head :
             leave_frames.append(i)
-            print("\n" + "-"*60)
-            print(f"[Frame {i}]")
-            print(f"ball_bbox       = {ball_bbox}")
-            print(f"ball_center     = {ball_center}")
-            print(f"right_wrist     = {right_wrist}")
-            print(f"right_shoulder  = {right_soulder}")
-            print(f"nose            = {nose}")
-            print(f"l_eye, r_eye    = {l_eye}, {r_eye}")
-            print(f"l_ear, r_ear    = {l_ear}, {r_ear}")
-            print()
-            print(f"dist_thresh  = {dist_thresh}")
-            print(f"dist_thresh_head  = {dist_thresh_head}")
-            print(f"dist_thresh_head_1  = {dist_thresh_head_1}")
-            print(f"dist(ball, wrist)  = {dist}")
-            print(f"dist(ball, nose)   = {distance_nose}")
-            print(f"dist(ball, r_eye)  = {distance_r_eye}")
-            print(f"dist(ball, l_eye)  = {distance_l_eye}")
-            print(f"dist(ball, r_ear)  = {distance_r_ear}")
-            print(f"dist(ball, l_ear)  = {distance_l_ear}")
-            print()
-            print(f"in_hand_prev     = {in_hand_prev}")
-            print(f"in_hand          = {in_hand}")
-            print(f"is_dribble       = {is_dribble}")
-            print(f"ball_is_head     = {ball_is_head}")
-            print("will_append_leave_frame = "
-                f"{in_hand_prev and (not in_hand) and (not is_dribble) and (not ball_is_head)}")
-            print("-"*60)
+            # print("\n" + "-"*60)
+            # print(f"[Frame {i}]")
+            # print(f"ball_bbox       = {ball_bbox}")
+            # print(f"ball_center     = {ball_center}")
+            # print(f"right_wrist     = {right_wrist}")
+            # print(f"right_shoulder  = {right_soulder}")
+            # print(f"nose            = {nose}")
+            # print(f"l_eye, r_eye    = {l_eye}, {r_eye}")
+            # print(f"l_ear, r_ear    = {l_ear}, {r_ear}")
+            # print()
+            # print(f"dist_thresh  = {dist_thresh}")
+            # print(f"dist_thresh_head  = {dist_thresh_head}")
+            # print(f"dist_thresh_head_1  = {dist_thresh_head_1}")
+            # print(f"dist(ball, wrist)  = {dist}")
+            # print(f"dist(ball, nose)   = {distance_nose}")
+            # print(f"dist(ball, r_eye)  = {distance_r_eye}")
+            # print(f"dist(ball, l_eye)  = {distance_l_eye}")
+            # print(f"dist(ball, r_ear)  = {distance_r_ear}")
+            # print(f"dist(ball, l_ear)  = {distance_l_ear}")
+            # print()
+            # print(f"in_hand_prev     = {in_hand_prev}")
+            # print(f"in_hand          = {in_hand}")
+            # print(f"is_dribble       = {is_dribble}")
+            # print(f"ball_is_head     = {ball_is_head}")
+            # print("will_append_leave_frame = "
+            #     f"{in_hand_prev and (not in_hand) and (not is_dribble) and (not ball_is_head)}")
+            # print("-"*60)
         prev_ball_valid = True
         in_hand_prev = in_hand
         is_dribble = False
         ball_is_head = False
 
-    return leave_frames
+
+    accurate_leave_frames = []
+    buffer_frames=10
+    last_kept = -10000000000
+    for f in leave_frames:
+        if f - last_kept > buffer_frames:
+            accurate_leave_frames.append(f)
+            last_kept = f
+
+
+    return accurate_leave_frames
+
+def shot_started(points, leave_frames):
+    shot_start_frames = []
+    buffer_frames = 10
+    
+
+
+    for frame_num in leave_frames:
+        # print(f"\nAnalyzing ball leave at frame {frame_num}:")
+        start = frame_num - 15
+        end = frame_num + 1
+        # print(f"Analyzing frames {start} to {end} for shot start detection.")
+        for i in range(start, end):
+            joints = points[i] 
+            right_soulder = joints[6] if joints is not None else None
+            right_elbow = joints[8] if joints is not None else None
+
+            if right_elbow[1] <= right_soulder[1]:
+                # print(f"right_elbow: {right_elbow}, right_soulder: {right_soulder}")
+                shot_start_frames.append(i)
+                break
+
+    return shot_start_frames
 
 

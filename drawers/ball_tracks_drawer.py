@@ -51,9 +51,8 @@ class BallTracksDrawer:
         
         return output_video_frames
 
-    def draw_ball_left(self, video_frames, leave_frames, linger=30):
-        import cv2
-
+    def draw_ball_left(self, video_frames, leave_frames):
+        linger=30
         h, w = video_frames[0].shape[:2]
         position = (w // 2, h // 2)
 

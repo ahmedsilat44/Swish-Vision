@@ -262,3 +262,5 @@ class HumanTracksDrawer:
 
         return out_frames
 
+    def analysis():
+        pass

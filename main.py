@@ -49,9 +49,10 @@ from drawers.ball_tracks_drawer import BallTracksDrawer
 from drawers.rim_tracks_drawer import RimTracksDrawer
 from drawers.human_tracks_drawer import HumanTracksDrawer
 from utils.ball_hand import ball_hand
+import utils.analysis
 
 def main():
-    vidname = "vid14"
+    vidname = "vid14_1"
     print(f"Reading video: input_videos/{vidname}.mp4")
     video_frames, fps = read_video(f"input_videos/{vidname}.mp4")
 
@@ -95,6 +96,8 @@ def main():
 
     ball_left_frames = ball_hand(ball_loco, points, video_frames)
 
+    
+
     # Drawers
     ball_tracks_drawer = BallTracksDrawer()
     # out_video_frames = ball_tracks_drawer.draw(video_frames, ball_tracks)
@@ -128,7 +131,7 @@ def main():
     print("Making video...")   
 
    # write_video(four_out_video_frames, f"output_videos/output_{vidname}_second_angle.avi", fps=fps)
-    write_video(five_out_video_frames, f"output_videos/output_{vidname}_ball_left.avi", fps=fps)
+    write_video(five_out_video_frames, f"output_videos/output_{vidname}_final.avi", fps=fps)
 
     ##if using this dont forget to change in vid_utils.py the fourcc to mp4v
     # write_video(four_out_video_frames, f"output_videos/output_{vidname}.mp4", fps=fps) 

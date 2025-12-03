@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import os
 
 
 class HumanTracksDrawer:
@@ -44,7 +45,7 @@ class HumanTracksDrawer:
         box_color=(0, 255, 0),
         kp_color=(255, 0, 0),
         skeleton_color=(0, 255, 255),
-        skeleton_color_rhs=(255,20,147),
+        skeleton_color_rhs=(255,0,0),
         text_color=(255, 255, 255),
         box_thickness=2,
         kp_radius=3,
@@ -85,12 +86,12 @@ class HumanTracksDrawer:
             x, y = kps_xy[i]
             if x is None or y is None:
                 continue
-            # Skip invalid coordinates (0,0) or very close to origin
+            # Skip invalid_grp coordinates (0,0) or very close to origin
             if abs(x) < 1 and abs(y) < 1:
                 continue
             if kps_conf is not None and kps_conf[i] is not None and kps_conf[i] < conf_thr:
                 continue
-            cv2.circle(img, (int(x), int(y)), self.kp_radius, self.kp_color, -1)
+            # cv2.circle(img, (int(x), int(y)), self.kp_radius, self.kp_color, -1)
 
         # draw skeleton
         for a, b in self.COCO_SKELETON:
@@ -100,7 +101,7 @@ class HumanTracksDrawer:
             xb, yb = kps_xy[b]
             if None in (xa, ya, xb, yb):
                 continue
-            # Skip invalid coordinates (0,0) or very close to origin
+            # Skip invalid_grp coordinates (0,0) or very close to origin
             if (abs(xa) < 1 and abs(ya) < 1) or (abs(xb) < 1 and abs(yb) < 1):
                 continue
             if kps_conf is not None:
@@ -108,13 +109,16 @@ class HumanTracksDrawer:
                 cb = kps_conf[b] if kps_conf[b] is not None else 1.0
                 if ca < conf_thr or cb < conf_thr:
                     continue
-            if ((a,b) == (6, 8) or (a,b) == (8,10)):
+            if ((a,b) == (6, 8) or (a,b) == (8,10) or (a,b) == (6,12)):
                 cv2.line(img, (int(xa), int(ya)), (int(xb), int(yb)), self.skeleton_color_rhs, self.sk_thickness)
+                if ((a,b) == (6, 8)):
+                    cv2.line(img, (int(xa), int(ya)), (int(xa), int(ya+25)), self.skeleton_color, self.sk_thickness)
             else:
-                cv2.line(img, (int(xa), int(ya)), (int(xb), int(yb)), self.skeleton_color, self.sk_thickness)
+                # cv2.line(img, (int(xa), int(ya)), (int(xb), int(yb)), self.skeleton_color, self.sk_thickness)
+                pass
             
     def write_coords(self, img, kps_xy, kps_conf=None, conf_thr=0.2):
-        parts_oi = [6,8,10] #right arm stuff
+        parts_oi = [6,8,10,12] #right arm stuff
 
         # for parts in range(len(kps_xy)):
         #     coord = kps_xy[parts]
@@ -127,7 +131,7 @@ class HumanTracksDrawer:
             coord = kps_xy[parts]
             part = self.COCO_SKELETON_Names[parts]
             
-            # Check if coordinate is valid
+            # Check if coordinate is valid_grp
             if coord[0] is None or coord[1] is None:
                 cv2.putText(img, f"{part} coords: N/A", (10, 60+offset), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
                 continue
@@ -144,13 +148,18 @@ class HumanTracksDrawer:
             cv2.putText(img, f"{part} coords: {coord}", (10, 60+offset), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
         
 
-    def write_angles(self, img, angle):
-        if angle is None:
-            cv2.putText(img, "Right S-E-W angle: N/A", (10, 180), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+    def write_angles(self, img, angle_sew, angle_esh):
+        if angle_sew is None:
+            cv2.putText(img, "Right S-E-W angle: N/A", (10, 210), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
         else:
-            angle = round(angle, 4)
-            cv2.putText(img, f"Right S-E-W angle: {angle} deg", (10, 180), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+            angle_sew = round(angle_sew, 4)
+            cv2.putText(img, f"Right S-E-W angle: {angle_sew} deg", (10, 210), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
+        if angle_esh is None:
+            cv2.putText(img, "Right E-S-H angle: N/A", (10, 240), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+        else:
+            angle_esh = round(angle_esh, 4)
+            cv2.putText(img, f"Right E-S-H angle: {angle_esh} deg", (10, 240), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
             
 
@@ -185,7 +194,8 @@ class HumanTracksDrawer:
             res = detections[i]
             # img = frame.copy()
             img = frame
-            current_angle = angles[i]
+            current_angle_sew = angles[0][i]
+            current_angle_esh = angles[1][i]
 
             # --- Boxes, labels, ids ---
             boxes = getattr(res, "boxes", None)
@@ -249,10 +259,133 @@ class HumanTracksDrawer:
                         #     f.write("\n")
 
                         self._draw_keypoints(img, joints, confs, conf_thr=kpt_thr)
-                        self.write_coords(img, joints, confs, conf_thr=kpt_thr)
-                        self.write_angles(img, current_angle)
+                        # self.write_coords(img, joints, confs, conf_thr=kpt_thr)
+                        # self.write_angles(img, current_angle_sew, current_angle_esh)
 
             out_frames.append(img)
 
         return out_frames
 
+    def analysis(self, frames, angles, leave_frames, shot_starts, file_name):
+        out_dir = os.path.dirname(f"./reports/{file_name}")
+        if out_dir and not os.path.exists(out_dir):
+            os.makedirs(out_dir, exist_ok=True)
+
+        with open(f"./reports/{file_name}", "w") as f:
+            f.write("")
+
+        lookback_frames=3
+        # shoulder-elbow-wrist
+        sew_min_thresh = 65
+        sew_max_thresh = 75   
+        # elbow-shoulder-hip
+        esh_min_thresh = 120
+        esh_max_thresh = 135   
+
+        sew_list, esh_list = angles
+
+        # 2) For each "shot" (unique leave_frame), analyze angle window
+        for shot_num, frame_num in enumerate(leave_frames):
+            if (shot_num >= len(shot_starts)):
+                continue
+            start = shot_starts[shot_num]
+            end = frame_num  
+            # print(f"start: {start} end: {end}")
+
+            # Extract windowed angles (guard against length mismatch)
+            sew_grp = sew_list[start:end+1] 
+            esh_grp = esh_list[start:end+1] 
+
+            # Convert to numpy arrays and ignore Nones if present
+            sew_valid_grp = [a for a in sew_grp if a is not None]
+            esh_valid_grp = [a for a in esh_grp if a is not None]
+
+            # print(f"sew_valid_grp for shot {shot_num+1}: {sew_valid_grp}")
+            # print(f"esh_valid_grp for shot {shot_num+1}: {esh_valid_grp}")
+        
+            if sew_valid_grp:
+                sew_avg = round(sum(sew_valid_grp) / len(sew_valid_grp),4)
+                sew_min = round(min(sew_valid_grp),4)+1
+                sew_max = round(max(sew_valid_grp),4)
+            else:
+                sew_avg = sew_min = sew_max = None
+
+            if esh_valid_grp:
+                esh_avg = round(sum(esh_valid_grp) / len(esh_valid_grp),4)
+                esh_min = round(min(esh_valid_grp),4)
+                esh_max = round(max(esh_valid_grp),4)-1
+            else:
+                esh_avg = esh_min = esh_max = None
+
+            # 3) Compare to thresholds (you can change logic later)
+            # For now: classify form as "GOOD" or "NEEDS WORK" with simple rules
+            issues = []
+
+            if sew_min is not None:
+                if (sew_min <= sew_min_thresh):
+                    issues.append(f"Your SEW angle ({sew_min} deg) is too low. Open your elbows!")
+                    issues.append(f"Try to keep it between {sew_min_thresh} deg and {sew_max_thresh} deg.")
+                elif (sew_min >= sew_max_thresh):
+                    issues.append(f"Your SEW angle ({sew_min} deg) is too high. Close your elbow!")
+                    issues.append(f"Try to keep it between {sew_min_thresh} deg and {sew_max_thresh} deg.")
+                else:
+                    issues.append(f"No issues with SEW")
+            else:
+                issues.append("missing arm angles")
+
+            if esh_max is not None:
+                if (esh_max <= esh_min_thresh):
+                    issues.append(f"Your ESH angle ({esh_max} deg) is too low. Shoot with more arc!")
+                    issues.append(f"Try to keep it between {esh_min_thresh} deg and {esh_max_thresh} deg.")
+                elif (esh_max >= esh_max_thresh):
+                    issues.append(f"Your ESH angle ({esh_max} deg) is too high. Shoot with less arc!")
+                    issues.append(f"Try to keep it between {esh_min_thresh} deg and {esh_max_thresh} deg.")
+                else:
+                    issues.append(f"No issue with ESH")
+            else:
+                issues.append("missing torso angles")
+
+            if len(issues) == 2:
+                verdict = ["GOOD FORM"]
+            else:
+                verdict = [f"shot {shot_num+1}"] + ["NEEDS WORK: "] + issues
+
+
+            with open(f"./reports/{file_name}", "a") as f:
+                for item in verdict:
+                    f.write(str(item))
+                    f.write("\n")
+                f.write("\n")
+
+            # 4) Draw analysis text on the leave_frame itself
+            linger = 30*3
+            for k in range(0, linger):   # 0 to 29 → 30 frames
+                draw_frame_index = frame_num + k
+                if draw_frame_index >= len(frames):
+                    break
+
+                frame = frames[draw_frame_index]
+                
+                # if sew_avg is not None and esh_avg is not None:
+                #     text2 = f"SEW min={sew_min}° max={sew_max}° avg={round(sew_avg,4)}°   |   ESH min={esh_min}° max={esh_max}° avg={round(esh_avg,4)}°"
+                # else:
+                #     text2 = "SEW avg=NA  ESH avg=NA"
+
+                
+                offset = 0
+                for txt in verdict:
+                    offset += 30
+                    # cv2.putText(frame, txt, (10, 400+offset), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2, cv2.LINE_AA)
+                    cv2.putText(frame, txt, (10, 60+offset), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2, cv2.LINE_AA)
+
+                
+                    
+
+                # # cv2.putText(frame, text2, (10, 430+offset), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 1, cv2.LINE_AA)
+                # cv2.putText(frame, text2, (10, 90+offset), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 1, cv2.LINE_AA)
+
+                frames[draw_frame_index] = frame
+
+        return frames
+
+        

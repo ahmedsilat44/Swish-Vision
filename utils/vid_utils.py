@@ -13,14 +13,35 @@ def read_video(video_path):
         frames.append(frame)
     return frames, fps
 
-def write_video(frames, output_dir, fps=30):
-    if not os.path.exists(os.path.dirname(output_dir)):
-        os.mkdir(os.path.dirname(frames))
-    
-    fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    # fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+import cv2
+import os
+import sys
 
-    out = cv2.VideoWriter(output_dir, fourcc, fps, (frames[0].shape[1], frames[0].shape[0]))
-    for frame in frames:
+def write_video(frames, output_path, fps=30):
+    # Ensure directory exists
+    out_dir = os.path.dirname(output_path)
+    if out_dir and not os.path.exists(out_dir):
+        os.makedirs(out_dir, exist_ok=True)
+
+    # Setup video writer
+    height, width = frames[0].shape[:2]
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+
+    total = len(frames)
+
+    def progress_bar(i, total):
+        pct = (i / total) * 100
+        bar_len = 40
+        filled = int((i / total) * bar_len)
+        bar = "█" * filled + "-" * (bar_len - filled)
+        sys.stdout.write(f"\rWriting video: [{bar}] {pct:6.2f}% ({i}/{total})")
+        sys.stdout.flush()
+
+    # Write frames with progress bar
+    for i, frame in enumerate(frames, start=1):
         out.write(frame)
+        progress_bar(i, total)
+
     out.release()
+    print("\nDone!")  # move to new line

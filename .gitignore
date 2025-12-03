@@ -1,0 +1,2 @@
+# Ignore common output directories that may contain generated videos
+/output_videos/

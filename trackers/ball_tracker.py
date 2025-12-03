@@ -3,6 +3,7 @@ import supervision as sv
 import torch
 import pandas as pd
 import numpy as np
+from drawers.utils import get_center
 
 class BallTracker:
     def __init__(self, model_path: str):
@@ -137,3 +138,34 @@ class BallTracker:
         ball_positions = [{1:{"bbox":x , "class": "Basketball"}} for x in df_ball_positions.to_numpy().tolist()]
 
         return ball_positions
+
+    def get_ball_loco(self, video_frames, tracks):
+        ball_loco = []
+
+        for frame_num, frame in enumerate(video_frames):
+
+            player_dict = tracks[frame_num]
+
+            found_ball = False
+
+            for track_id, track in player_dict.items():
+                if track["bbox"] is None:
+                    continue
+                
+                label = track["class"]
+                box = track["bbox"]
+
+                # Debug log
+                with open("ball_locl.txt", "a") as f:
+                    f.write(str(box) + "\n")
+
+                if label == "Basketball":
+                    ball_loco.append(box)
+                    found_ball = True
+                    break  # Stop searching once ball found
+
+            # If no ball track found → append 0
+            if not found_ball:
+                ball_loco.append(0)
+
+        return ball_loco

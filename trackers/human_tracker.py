@@ -92,9 +92,9 @@ class HumanTracker:
             joints = [(float(x), float(y)) for x, y in kps_xy[person_idx]]
 
             # Optional: write joints to file for debugging
-            with open("xy_coords.txt", "a") as f:
-                f.write(str(joints))
-                f.write("\n")
+            # with open("xy_coords.txt", "a") as f:
+            #     f.write(str(joints))
+            #     f.write("\n")
 
             # Indices: 6 = right shoulder, 8 = right elbow, 10 = right wrist, 12 = right hip
             right_shoulder = joints[6]
@@ -157,7 +157,7 @@ class HumanTracker:
             N = kps_xy.shape[0]
 
             # If no people detected
-            person_idx = 0
+            person_idx = 0  
 
             joints = [(float(x), float(y)) for x, y in kps_xy[person_idx]]
             all_points.append(joints)

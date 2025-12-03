@@ -1,0 +1,75 @@
+shot 1
+NEEDS WORK: 
+Your SEW angle (98.8933 deg) is too high. Close your elbow!
+Try to keep it between 65 deg and 75 deg.
+No issue with ESH
+
+shot 2
+NEEDS WORK: 
+Your SEW angle (91.1705 deg) is too high. Close your elbow!
+Try to keep it between 65 deg and 75 deg.
+No issue with ESH
+
+shot 3
+NEEDS WORK: 
+Your SEW angle (92.7006 deg) is too high. Close your elbow!
+Try to keep it between 65 deg and 75 deg.
+Your ESH angle (118.7256 deg) is too low. Shoot with more arc!
+Try to keep it between 120 deg and 135 deg.
+
+shot 4
+NEEDS WORK: 
+Your SEW angle (81.743 deg) is too high. Close your elbow!
+Try to keep it between 65 deg and 75 deg.
+No issue with ESH
+
+shot 5
+NEEDS WORK: 
+Your SEW angle (87.032 deg) is too high. Close your elbow!
+Try to keep it between 65 deg and 75 deg.
+No issue with ESH
+
+shot 6
+NEEDS WORK: 
+Your SEW angle (89.3144 deg) is too high. Close your elbow!
+Try to keep it between 65 deg and 75 deg.
+No issue with ESH
+
+shot 7
+NEEDS WORK: 
+Your SEW angle (85.5986 deg) is too high. Close your elbow!
+Try to keep it between 65 deg and 75 deg.
+Your ESH angle (140.1987 deg) is too high. Shoot with less arc!
+Try to keep it between 120 deg and 135 deg.
+
+shot 8
+NEEDS WORK: 
+Your SEW angle (82.8289 deg) is too high. Close your elbow!
+Try to keep it between 65 deg and 75 deg.
+No issue with ESH
+
+shot 9
+NEEDS WORK: 
+Your SEW angle (90.005 deg) is too high. Close your elbow!
+Try to keep it between 65 deg and 75 deg.
+Your ESH angle (136.397 deg) is too high. Shoot with less arc!
+Try to keep it between 120 deg and 135 deg.
+
+shot 10
+NEEDS WORK: 
+Your SEW angle (92.3951 deg) is too high. Close your elbow!
+Try to keep it between 65 deg and 75 deg.
+No issue with ESH
+
+shot 11
+NEEDS WORK: 
+Your SEW angle (85.3687 deg) is too high. Close your elbow!
+Try to keep it between 65 deg and 75 deg.
+No issue with ESH
+
+shot 12
+NEEDS WORK: 
+Your SEW angle (82.3491 deg) is too high. Close your elbow!
+Try to keep it between 65 deg and 75 deg.
+No issue with ESH
+

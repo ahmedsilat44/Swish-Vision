@@ -174,7 +174,7 @@ def shot_started(points, leave_frames):
             right_soulder = joints[6] if joints is not None else None
             right_elbow = joints[8] if joints is not None else None
 
-            if right_elbow[1] <= right_soulder[1]:
+            if (right_elbow[1] - 25) <= right_soulder[1]:
                 # print(f"right_elbow: {right_elbow}, right_soulder: {right_soulder}")
                 shot_start_frames.append(i)
                 break

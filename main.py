@@ -49,9 +49,12 @@ from drawers.ball_tracks_drawer import BallTracksDrawer
 from drawers.rim_tracks_drawer import RimTracksDrawer
 from drawers.human_tracks_drawer import HumanTracksDrawer
 from utils.ball_hand import ball_hand, shot_started
+import os
 
-def main():
-    vidname = "vid14_1"
+def main_pipeline(vidname):
+
+
+
     print(f"Reading video: input_videos/{vidname}.mp4")
     video_frames, fps = read_video(f"input_videos/{vidname}.mp4")
 
@@ -69,7 +72,7 @@ def main():
     ball_tracks = ball_tracker.get_object_tracks(video_frames)
 
     # rim_tracks = rim_tracker.get_object_tracks(video_frames)
-    
+
 
     print("human_tracks = human_tracker.detect_frame(video_frames)")
     human_tracks = human_tracker.detect_frame(video_frames)
@@ -78,18 +81,18 @@ def main():
 
 
 
-    with open("angs.txt", "w") as f:
-        f.write(str(angles))
-        f.write("\n")
+    # with open("angs.txt", "w") as f:
+    #     f.write(str(angles))
+    #     f.write("\n")
 
-    
+
     # rim_tracks = rim_tracker.get_object_tracks(video_frames)
 
 
     ball_tracks = ball_tracker.remove_wrong_tracks(ball_tracks)
     rim_tracks = rim_tracker.remove_wrong_tracks(ball_tracks)
     interpolated_ball_tracks = ball_tracker.interpolate_missing_tracks(ball_tracks)
-    
+
     ball_loco = ball_tracker.get_ball_loco(video_frames, interpolated_ball_tracks)
     rim_tracks = rim_tracker.interpolate_missing_tracks(rim_tracks)
 
@@ -104,17 +107,17 @@ def main():
     ball_tracks_drawer = BallTracksDrawer()
     # out_video_frames = ball_tracks_drawer.draw(video_frames, ball_tracks)
     print("1")
-    out_video_frames = ball_tracks_drawer.draw(video_frames, interpolated_ball_tracks)
+    # out_video_frames = ball_tracks_drawer.draw(video_frames, interpolated_ball_tracks)
 
     rim_tracks_drawer = RimTracksDrawer()
     print("2")
-    two_out_video_frames = rim_tracks_drawer.draw(out_video_frames, rim_tracks)
+    # two_out_video_frames = rim_tracks_drawer.draw(out_video_frames, rim_tracks)
 
     # Add human keypoints drawing
     human_tracks_drawer = HumanTracksDrawer()
     print("3")
-    three_out_video_frames = human_tracks_drawer.draw(two_out_video_frames, human_tracks, angles, draw_boxes=False, draw_keypoints=True)
-    four_out_video_frames = human_tracks_drawer.analysis(three_out_video_frames, angles, ball_left_frames, shot_starts)
+    three_out_video_frames = human_tracks_drawer.draw(video_frames, human_tracks, angles, draw_boxes=False, draw_keypoints=True)
+    four_out_video_frames = human_tracks_drawer.analysis(three_out_video_frames, angles, ball_left_frames, shot_starts, f"{vidname}_report.txt")
 
 
 
@@ -128,23 +131,30 @@ def main():
     print("5")
     five_out_video_frames = shot_tracker.draw_shots(four_out_video_frames)
 
-    six_out_video_frames = ball_tracks_drawer.draw_ball_left(five_out_video_frames, ball_left_frames)
+    # six_out_video_frames = ball_tracks_drawer.draw_ball_left(five_out_video_frames, ball_left_frames)
 
 
 
-    print("Making video...")   
+    print("Making video...")
 
    # write_video(four_out_video_frames, f"output_videos/output_{vidname}_second_angle.avi", fps=fps)
-    write_video(six_out_video_frames, f"output_videos/output_{vidname}_final_final.avi", fps=fps)
+    write_video(five_out_video_frames, f"output_videos/output_{vidname}_final_final.avi", fps=fps)
 
     ##if using this dont forget to change in vid_utils.py the fourcc to mp4v
-    # write_video(four_out_video_frames, f"output_videos/output_{vidname}.mp4", fps=fps) 
+    # write_video(four_out_video_frames, f"output_videos/output_{vidname}.mp4", fps=fps)
 
     # print(len(ball_loco))
     # print(len(angles[0]))
     # print(len(angles[1]))
     # print(len(points))
     # print(len(video_frames))
-    
+
+
+def main():
+    # main_pipeline("vid14_1")
+    # main_pipeline("vid13_1")
+    main_pipeline("vid18")
+    main_pipeline("vid20")
+
 if __name__ == "__main__":
     main()

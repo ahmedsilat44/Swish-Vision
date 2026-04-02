@@ -1,0 +1,31 @@
+# FastAPI backend
+fastapi==0.135.3
+uvicorn[standard]==0.42.0
+starlette==1.0.0
+
+# Database
+SQLAlchemy==2.0.48
+pyodbc==5.3.0
+
+# Auth & security
+passlib[bcrypt]==1.7.4
+bcrypt==5.0.0
+python-jose[cryptography]==3.5.0
+cryptography==46.0.6
+
+# Config & validation
+pydantic==2.12.5
+pydantic-settings==2.13.1
+pydantic_core==2.41.5
+python-dotenv==1.2.2
+python-multipart==0.0.22
+
+# Task queue
+celery==5.6.3
+
+# Async / server internals
+anyio==4.13.0
+httptools==0.7.1
+watchfiles==1.1.1
+websockets==16.0
+cffi==2.0.0

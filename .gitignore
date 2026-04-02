@@ -1,2 +1,7 @@
 # Ignore common output directories that may contain generated videos
 /output_videos/
+
+# Environment variables
+.env
+.env.local
+.env.*.local

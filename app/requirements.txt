@@ -5,6 +5,7 @@ starlette==1.0.0
 
 # Database
 SQLAlchemy==2.0.48
+alembic==1.14.1
 pyodbc==5.3.0
 
 # Auth & security

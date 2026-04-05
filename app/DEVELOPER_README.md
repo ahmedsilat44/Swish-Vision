@@ -136,6 +136,20 @@ CREATE DATABASE SwishVision;
 
 Start Redis locally before running Celery worker.
 
+### 3.3 Run migrations
+
+Apply the initial schema migration after the database is available:
+
+```bash
+alembic upgrade head
+```
+
+If the `alembic` command is not available, use:
+
+```bash
+python -m alembic upgrade head
+```
+
 ## 4. Run the App
 
 Use two terminals.

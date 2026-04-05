@@ -1,5 +1,7 @@
 # SwishVision Web App — Developer Guide
 
+For full local setup and run instructions, see `app/DEVELOPER_README.md`.
+
 SwishVision's web application is split into two parts:
 
 - **Backend** — FastAPI (Python), located in `app/`

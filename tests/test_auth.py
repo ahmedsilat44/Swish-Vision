@@ -184,7 +184,7 @@ class TestRegistration:
         res = client.post("/api/register", json={
             "name": "Special Char User",
             "email": "special@example.com",
-            "password": "Pass!@#$%^&*()"
+            "password": "Pass123!@#$%^&*()"
         })
         assert res.status_code == 201
 

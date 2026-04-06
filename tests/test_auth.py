@@ -1,6 +1,7 @@
 import pytest
 from sqlalchemy.orm import Session
 from app.models.user import User
+from app.models.revoked_token import RevokedToken
 from app.core.security import verify_password
 
 
@@ -200,4 +201,48 @@ class TestLogin:
 
     def test_login_invalid_credentials(self, client):
         res = client.post("/api/login", json={"email": "noone@example.com", "password": "Wrong123"})
+        assert res.status_code == 401
+
+
+class TestLogout:
+    """Tests for /api/logout — token revocation flows"""
+
+    def _register_and_login(self, client):
+        """Helper: register a user and return a valid bearer token."""
+        client.post("/api/register", json={"name": "Logout User", "email": "logout@example.com", "password": "Password1"})
+        res = client.post("/api/login", json={"email": "logout@example.com", "password": "Password1"})
+        return res.json()["access_token"]
+
+    def test_logout_success(self, client):
+        """A valid token should receive a 200 and a success message."""
+        token = self._register_and_login(client)
+        res = client.post("/api/logout", headers={"Authorization": f"Bearer {token}"})
+        assert res.status_code == 200
+        assert res.json()["message"] == "Logged out successfully"
+
+    def test_logout_persists_revoked_jti(self, client, db_session: Session):
+        """Logout should write the token's jti to the revoked_tokens table."""
+        token = self._register_and_login(client)
+        client.post("/api/logout", headers={"Authorization": f"Bearer {token}"})
+
+        count = db_session.query(RevokedToken).count()
+        assert count == 1
+
+    def test_revoked_token_rejected_on_protected_route(self, client):
+        """A token that has been logged out must be rejected with 401 on subsequent requests."""
+        token = self._register_and_login(client)
+        client.post("/api/logout", headers={"Authorization": f"Bearer {token}"})
+
+        res = client.get("/api/dashboard/summary", headers={"Authorization": f"Bearer {token}"})
+        assert res.status_code == 401
+        assert res.json()["detail"] == "Token has been revoked"
+
+    def test_logout_requires_authentication(self, client):
+        """Logout without a token must return 401 (missing credentials)."""
+        res = client.post("/api/logout")
+        assert res.status_code == 401
+
+    def test_logout_with_invalid_token_returns_401(self, client):
+        """Logout with a malformed/invalid token must return 401, not 500."""
+        res = client.post("/api/logout", headers={"Authorization": "Bearer not.a.valid.token"})
         assert res.status_code == 401

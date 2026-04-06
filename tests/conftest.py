@@ -24,6 +24,7 @@ from app.models.session import SessionModel
 from app.models.report import Report
 from app.models.shot_event import ShotEvent
 from app.models.angle_frame import AngleFrame
+from app.models.revoked_token import RevokedToken
 
 # Create tables in test database
 Base.metadata.create_all(bind=test_engine)

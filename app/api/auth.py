@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
-from jose import jwt
+from jose import jwt, JWTError
 from datetime import datetime, timezone
 from app.database import get_db
 from app.models.user import User
@@ -53,9 +53,18 @@ def logout(
     current_user: User = Depends(get_current_user),
 ):
     token = credentials.credentials
-    payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
     jti = payload.get("jti")
     exp_ts = payload.get("exp")
+    if not isinstance(jti, str) or not jti:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    if not isinstance(exp_ts, (int, float)):
+        raise HTTPException(status_code=401, detail="Invalid token")
+
     expires_at = datetime.fromtimestamp(exp_ts, tz=timezone.utc)
     db.add(RevokedToken(jti=jti, expires_at=expires_at))
     db.commit()

@@ -18,7 +18,7 @@ This guide covers local developer setup for:
 
 | Tool | Recommended Version |
 |------|---------------------|
-| Python | 3.13+ |
+| Python | 3.8+ |
 | Node.js | 18+ |
 | SQL Server | 2019+ |
 | ODBC Driver | SQL Server ODBC driver installed locally |

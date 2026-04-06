@@ -26,7 +26,6 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=True),
         sa.UniqueConstraint("email", name="uq_users_email"),
     )
-    op.create_index(op.f("ix_users_email"), "users", ["email"], unique=False)
 
     op.create_table(
         "sessions",

@@ -42,13 +42,14 @@ def get_current_user(
         jti = payload.get("jti")
         if user_id is None:
             raise HTTPException(status_code=401, detail="Invalid token")
-    except JWTError:
+        user_id = int(user_id)
+    except (JWTError, ValueError, TypeError):
         raise HTTPException(status_code=401, detail="Invalid token")
 
     if jti is not None and db.query(RevokedToken).filter(RevokedToken.jti == jti).first():
         raise HTTPException(status_code=401, detail="Token has been revoked")
 
-    user = db.query(User).filter(User.id == int(user_id)).first()
+    user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
     return user

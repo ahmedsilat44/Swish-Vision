@@ -1,7 +1,7 @@
 import uuid
 from passlib.context import CryptContext
 from jose import JWTError, jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
@@ -26,7 +26,7 @@ def verify_password(plain: str, hashed: str) -> bool:
 def create_access_token(data: dict, expires_minutes: int = 60) -> str:
     payload = data.copy()
     payload["jti"] = str(uuid.uuid4())
-    payload["exp"] = datetime.utcnow() + timedelta(minutes=expires_minutes)
+    payload["exp"] = datetime.now(timezone.utc) + timedelta(minutes=expires_minutes)
     return jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
 
 

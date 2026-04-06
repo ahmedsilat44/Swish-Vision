@@ -1,5 +1,4 @@
 import pytest
-from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 from app.models.user import User
 from app.core.security import verify_password

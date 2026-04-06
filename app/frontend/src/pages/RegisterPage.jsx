@@ -261,8 +261,7 @@ export function RegisterPage({ onRegisterSuccess, onGoToLogin }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          first_name: form.firstName.trim(),
-          last_name: form.lastName.trim(),
+          name: `${form.firstName.trim()} ${form.lastName.trim()}`.trim(),
           email: form.email.trim().toLowerCase(),
           password: form.password,
         }),

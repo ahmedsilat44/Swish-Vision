@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from app.database import engine, Base
 from app.api import auth, sessions, dashboard
 from app.core.middleware import setup_middleware
+import app.models  # noqa: F401 – importing the package registers all models with Base
 
 
 @asynccontextmanager

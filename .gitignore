@@ -5,3 +5,9 @@
 .env
 .env.local
 .env.*.local
+
+# Python cache and bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd

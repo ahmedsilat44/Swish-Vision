@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from jose import jwt, JWTError
 from datetime import datetime, timezone
@@ -66,6 +66,9 @@ def logout(
         raise HTTPException(status_code=401, detail="Invalid token")
 
     expires_at = datetime.fromtimestamp(exp_ts, tz=timezone.utc)
-    db.add(RevokedToken(jti=jti, expires_at=expires_at))
-    db.commit()
+
+    existing_revocation = db.query(RevokedToken).filter(RevokedToken.jti == jti).first()
+    if not existing_revocation:
+        db.add(RevokedToken(jti=jti, expires_at=expires_at))
+        db.commit()
     return {"message": "Logged out successfully"}

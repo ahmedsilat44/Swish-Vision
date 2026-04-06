@@ -27,6 +27,12 @@ Base.metadata.create_all(bind=test_engine)
 
 # Now import the app
 from app.main import app
+import app.main as _app_main
+
+# Patch the engine referenced in app.main's lifespan so that
+# TestClient startup (which triggers lifespan) uses the test DB
+# instead of the production SQL Server engine.
+_app_main.engine = test_engine
 
 # Override the get_db dependency to use test database
 def override_get_db():

@@ -159,6 +159,11 @@ const styles = {
     color: "#ff6400",
     textDecoration: "none",
     fontWeight: "600",
+    background: "none",
+    border: "none",
+    padding: 0,
+    font: "inherit",
+    cursor: "pointer",
   },
 };
 

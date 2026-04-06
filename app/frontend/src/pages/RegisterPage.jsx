@@ -278,6 +278,9 @@ export function RegisterPage({ onRegisterSuccess, onGoToLogin }) {
         return;
       }
 
+      if (data?.access_token) {
+        localStorage.setItem("access_token", data.access_token);
+      }
       if (onRegisterSuccess) onRegisterSuccess(data);
 
     } catch (err) {

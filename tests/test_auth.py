@@ -209,9 +209,17 @@ class TestLogout:
 
     def _register_and_login(self, client):
         """Helper: register a user and return a valid bearer token."""
-        client.post("/api/register", json={"name": "Logout User", "email": "logout@example.com", "password": "Password1"})
+        register_res = client.post(
+            "/api/register",
+            json={"name": "Logout User", "email": "logout@example.com", "password": "Password1"},
+        )
+        assert register_res.status_code == 201, register_res.text
+
         res = client.post("/api/login", json={"email": "logout@example.com", "password": "Password1"})
-        return res.json()["access_token"]
+        assert res.status_code == 200, res.text
+        body = res.json()
+        assert "access_token" in body
+        return body["access_token"]
 
     def test_logout_success(self, client):
         """A valid token should receive a 200 and a success message."""

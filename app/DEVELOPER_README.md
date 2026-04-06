@@ -211,8 +211,9 @@ pytest tests/test_sessions.py -q
 
 Test notes:
 
-- Current tests use the configured app database connection.
-- Create a dedicated local test database if you do not want to run tests against your development DB.
+- Tests override the app's `get_db` dependency in pytest to use a temporary SQLite database.
+- You do not need to create or configure a separate local test database for the standard test suite.
+- The configured application database connection is not used by these tests.
 
 ## 7. Common Issues
 

@@ -84,17 +84,17 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index(op.f("ix_users_email"), table_name="users")
-    op.drop_table("users")
-
-    op.drop_index(op.f("ix_sessions_user_id"), table_name="sessions")
-    op.drop_table("sessions")
-
-    op.drop_index(op.f("ix_reports_session_id"), table_name="reports")
-    op.drop_table("reports")
+    op.drop_index(op.f("ix_angle_frames_session_id"), table_name="angle_frames")
+    op.drop_table("angle_frames")
 
     op.drop_index(op.f("ix_shot_events_session_id"), table_name="shot_events")
     op.drop_table("shot_events")
 
-    op.drop_index(op.f("ix_angle_frames_session_id"), table_name="angle_frames")
-    op.drop_table("angle_frames")
+    op.drop_index(op.f("ix_reports_session_id"), table_name="reports")
+    op.drop_table("reports")
+
+    op.drop_index(op.f("ix_sessions_user_id"), table_name="sessions")
+    op.drop_table("sessions")
+
+    op.drop_index(op.f("ix_users_email"), table_name="users")
+    op.drop_table("users")

@@ -11,7 +11,10 @@ test_db_fd, test_db_path = tempfile.mkstemp(suffix=".db")
 os.close(test_db_fd)
 TEST_SQLALCHEMY_DATABASE_URL = f"sqlite:///{test_db_path}"
 
-test_engine = create_engine(TEST_SQLALCHEMY_DATABASE_URL)
+test_engine = create_engine(
+    TEST_SQLALCHEMY_DATABASE_URL,
+    connect_args={"check_same_thread": False},
+)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
 
 # Import after engine is created

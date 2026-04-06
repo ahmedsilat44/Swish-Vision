@@ -75,12 +75,19 @@ def db_session():
 @pytest.fixture(autouse=True)
 def clear_db_before_test():
     """Clear database before each test"""
-    with test_engine.begin() as conn:
-        conn.execute(text("PRAGMA foreign_keys = OFF"))
+    conn = test_engine.raw_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("PRAGMA foreign_keys = OFF")
         for table in reversed(Base.metadata.sorted_tables):
-            conn.execute(table.delete())
-        conn.execute(text("PRAGMA foreign_keys = ON"))
-    yield
+            cursor.execute(str(table.delete().compile(dialect=test_engine.dialect)))
+        conn.commit()
+        cursor.execute("PRAGMA foreign_keys = ON")
+        conn.commit()
+        yield
+    finally:
+        cursor.close()
+        conn.close()
 
 
 # Cleanup at the end

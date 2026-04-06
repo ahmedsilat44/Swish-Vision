@@ -7,12 +7,22 @@ from app.config import settings
 from app.models.user import User
 from app.models.session import SessionModel
 from app.schemas.session import SessionResponse, SessionListResponse, ShotAnalyticsResponse, AngleDataResponse
-from app.core.security import get_current_user
+from app.core.security import get_current_user, get_session_or_403
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 
 ALLOWED_EXTENSIONS = {".mp4", ".avi", ".mov", ".mkv"}
 ALLOWED_MIME_TYPES = {"video/mp4", "video/x-msvideo", "video/quicktime", "video/x-matroska"}
+
+
+def verify_session_ownership(
+    session_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Dependency that validates session ownership"""
+    return get_session_or_403(session_id, current_user, db)
+
 
 
 @router.post("/upload", response_model=SessionResponse, status_code=201)
@@ -60,37 +70,27 @@ def list_sessions(db: Session = Depends(get_db), current_user: User = Depends(ge
 
 
 @router.get("/{session_id}", response_model=SessionResponse)
-def get_session(session_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    session = db.query(SessionModel).filter(SessionModel.id == session_id, SessionModel.user_id == current_user.id).first()
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
+def get_session(session: SessionModel = Depends(verify_session_ownership)):
     return session
 
-
 @router.get("/{session_id}/shots", response_model=ShotAnalyticsResponse)
-def get_shots(session_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    session = db.query(SessionModel).filter(SessionModel.id == session_id, SessionModel.user_id == current_user.id).first()
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
+def get_shots(session: SessionModel = Depends(verify_session_ownership)):
     # TODO: Query shot_events and build response
-    return {"session_id": session_id, "shots": [], "total_shots": 0, "makes": 0, "misses": 0}
+    return {"session_id": session.id, "shots": [], "total_shots": 0, "makes": 0, "misses": 0}
+
 
 
 @router.get("/{session_id}/angles", response_model=AngleDataResponse)
-def get_angles(session_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    session = db.query(SessionModel).filter(SessionModel.id == session_id, SessionModel.user_id == current_user.id).first()
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
+def get_angles(session: SessionModel = Depends(verify_session_ownership)):
     # TODO: Query angle_frames and build response
-    return {"session_id": session_id, "frames": []}
+    return {"session_id": session.id, "frames": []}
 
 
 @router.delete("/{session_id}", status_code=204)
-def delete_session(session_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    session = db.query(SessionModel).filter(SessionModel.id == session_id, SessionModel.user_id == current_user.id).first()
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
-
+def delete_session(
+    session: SessionModel = Depends(verify_session_ownership),
+    db: Session = Depends(get_db),
+):
     # Remove files
     if session.upload_path and os.path.exists(session.upload_path):
         os.remove(session.upload_path)
@@ -99,3 +99,4 @@ def delete_session(session_id: int, db: Session = Depends(get_db), current_user:
 
     db.delete(session)
     db.commit()
+

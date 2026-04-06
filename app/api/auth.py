@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from jose import jwt, JWTError
 from datetime import datetime, timezone
 from app.database import get_db
@@ -67,8 +68,10 @@ def logout(
 
     expires_at = datetime.fromtimestamp(exp_ts, tz=timezone.utc)
 
-    existing_revocation = db.query(RevokedToken).filter(RevokedToken.jti == jti).first()
-    if not existing_revocation:
+    try:
         db.add(RevokedToken(jti=jti, expires_at=expires_at))
         db.commit()
+    except IntegrityError:
+        # Another concurrent request already revoked this token — still idempotent.
+        db.rollback()
     return {"message": "Logged out successfully"}

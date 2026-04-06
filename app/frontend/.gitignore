@@ -21,3 +21,9 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Python cache and bytecode (if any Python scripts are present)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd

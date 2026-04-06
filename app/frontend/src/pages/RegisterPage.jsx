@@ -257,7 +257,7 @@ export function RegisterPage({ onRegisterSuccess, onGoToLogin }) {
     setApiError("");
 
     try {
-      const res = await fetch(`${API_URL}/api/auth/register`, {
+      const res = await fetch(`${API_URL}/api/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -312,8 +312,9 @@ export function RegisterPage({ onRegisterSuccess, onGoToLogin }) {
         {/* Name Row */}
         <div style={styles.row}>
           <div style={styles.field}>
-            <label style={styles.label}>First Name</label>
+            <label htmlFor="reg-firstName" style={styles.label}>First Name</label>
             <input
+              id="reg-firstName"
               style={getInputStyle("firstName")}
               type="text"
               name="firstName"
@@ -325,8 +326,9 @@ export function RegisterPage({ onRegisterSuccess, onGoToLogin }) {
             {errors.firstName && <p style={styles.errorText}>{errors.firstName}</p>}
           </div>
           <div style={styles.field}>
-            <label style={styles.label}>Last Name</label>
+            <label htmlFor="reg-lastName" style={styles.label}>Last Name</label>
             <input
+              id="reg-lastName"
               style={getInputStyle("lastName")}
               type="text"
               name="lastName"
@@ -341,8 +343,9 @@ export function RegisterPage({ onRegisterSuccess, onGoToLogin }) {
 
         {/* Email */}
         <div style={styles.field}>
-          <label style={styles.label}>Email</label>
+          <label htmlFor="reg-email" style={styles.label}>Email</label>
           <input
+            id="reg-email"
             style={getInputStyle("email")}
             type="email"
             name="email"
@@ -356,8 +359,9 @@ export function RegisterPage({ onRegisterSuccess, onGoToLogin }) {
 
         {/* Password */}
         <div style={styles.field}>
-          <label style={styles.label}>Password</label>
+          <label htmlFor="reg-password" style={styles.label}>Password</label>
           <input
+            id="reg-password"
             style={getInputStyle("password")}
             type="password"
             name="password"
@@ -382,8 +386,9 @@ export function RegisterPage({ onRegisterSuccess, onGoToLogin }) {
 
         {/* Confirm Password */}
         <div style={styles.field}>
-          <label style={styles.label}>Confirm Password</label>
+          <label htmlFor="reg-confirmPassword" style={styles.label}>Confirm Password</label>
           <input
+            id="reg-confirmPassword"
             style={getInputStyle("confirmPassword")}
             type="password"
             name="confirmPassword"

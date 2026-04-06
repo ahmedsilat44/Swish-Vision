@@ -165,7 +165,7 @@ export function LoginPage({ onLoginSuccess, onGoToRegister }) {
     setApiError("");
 
     try {
-      const res = await fetch(`${API_URL}/api/auth/login`, {
+      const res = await fetch(`${API_URL}/api/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: form.email, password: form.password }),
@@ -213,8 +213,9 @@ export function LoginPage({ onLoginSuccess, onGoToRegister }) {
 
         {/* Email */}
         <div style={styles.field}>
-          <label style={styles.label}>Email</label>
+          <label htmlFor="login-email" style={styles.label}>Email</label>
           <input
+            id="login-email"
             style={{ ...styles.input, ...(errors.email ? styles.inputError : {}) }}
             type="email"
             name="email"
@@ -228,8 +229,9 @@ export function LoginPage({ onLoginSuccess, onGoToRegister }) {
 
         {/* Password */}
         <div style={styles.field}>
-          <label style={styles.label}>Password</label>
+          <label htmlFor="login-password" style={styles.label}>Password</label>
           <input
+            id="login-password"
             style={{ ...styles.input, ...(errors.password ? styles.inputError : {}) }}
             type="password"
             name="password"
@@ -252,13 +254,20 @@ export function LoginPage({ onLoginSuccess, onGoToRegister }) {
 
         <div style={styles.footer}>
           Don't have an account?{" "}
-          <a
-            style={styles.link}
-            href="#"
-            onClick={(e) => { e.preventDefault(); if (onGoToRegister) onGoToRegister(); }}
+          <button
+            type="button"
+            style={{
+              ...styles.link,
+              background: "none",
+              border: "none",
+              padding: 0,
+              cursor: "pointer",
+              font: "inherit",
+            }}
+            onClick={() => { if (onGoToRegister) onGoToRegister(); }}
           >
             Register
-          </a>
+          </button>
         </div>
       </div>
     </div>
@@ -280,7 +289,7 @@ export function LogoutButton({ onLogout }) {
 
       // Optional: tell the backend to invalidate the token
       if (token) {
-        await fetch(`${API_URL}/api/auth/logout`, {
+        await fetch(`${API_URL}/api/logout`, {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${token}`,

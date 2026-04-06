@@ -57,7 +57,11 @@ app.dependency_overrides[get_db] = override_get_db
 @pytest.fixture(scope="function")
 def client():
     """Fixture that provides a test client"""
-    return TestClient(app)
+    client = TestClient(app)
+    try:
+        yield client
+    finally:
+        client.close()
 
 
 @pytest.fixture
@@ -86,5 +90,5 @@ def cleanup_test_db():
     yield
     try:
         os.unlink(test_db_path)
-    except Exception as e:
+    except FileNotFoundError:
         pass

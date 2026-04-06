@@ -31,11 +31,17 @@ Base.metadata.create_all(bind=test_engine)
 # Now import the app
 from app.main import app
 import app.main as _app_main
+import app.database as _app_database
 
-# Patch the engine referenced in app.main's lifespan so that
-# TestClient startup (which triggers lifespan) uses the test DB
-# instead of the production SQL Server engine.
+# Patch engine in both modules so every consumer — app.main's lifespan
+# AND any test/module that does `from app.database import engine` after
+# this point — gets the SQLite test engine instead of the production one.
 _app_main.engine = test_engine
+_app_database.engine = test_engine
+
+# Re-bind SessionLocal so app.database.SessionLocal and anything that
+# imports it later also uses the test engine.
+_app_database.SessionLocal = TestingSessionLocal
 
 # Override the get_db dependency to use test database
 def override_get_db():

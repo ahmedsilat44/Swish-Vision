@@ -1,19 +1,7 @@
 import pytest
-from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 from app.models.user import User
 from app.core.security import verify_password
-
-
-@pytest.fixture
-def db_session_fixture():
-    """Fixture to get a database session for tests"""
-    from tests.conftest import TestingSessionLocal
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 class TestRegistration:
@@ -36,22 +24,22 @@ class TestRegistration:
         body = res.json()
         assert set(body.keys()) == {"access_token", "token_type"}
 
-    def test_register_user_persisted_in_db(self, client, db_session_fixture: Session):
+    def test_register_user_persisted_in_db(self, client, db_session: Session):
         """Test that registered user is saved to database"""
         payload = {"name": "Bob Smith", "email": "bob@example.com", "password": "ValidPass456"}
         client.post("/api/register", json=payload)
         
-        user = db_session_fixture.query(User).filter(User.email == "bob@example.com").first()
+        user = db_session.query(User).filter(User.email == "bob@example.com").first()
         assert user is not None
         assert user.name == "Bob Smith"
         assert user.email == "bob@example.com"
 
-    def test_register_password_hashed(self, client, db_session_fixture: Session):
+    def test_register_password_hashed(self, client, db_session: Session):
         """Test that password is hashed and not stored in plaintext"""
         payload = {"name": "Charlie", "email": "charlie@example.com", "password": "MyPassword789"}
         client.post("/api/register", json=payload)
         
-        user = db_session_fixture.query(User).filter(User.email == "charlie@example.com").first()
+        user = db_session.query(User).filter(User.email == "charlie@example.com").first()
         assert user is not None
         assert user.password_hash != "MyPassword789"
         assert verify_password("MyPassword789", user.password_hash)
@@ -170,7 +158,7 @@ class TestRegistration:
         res = client.post("/api/register", json={"name": "Test User", "email": "test201@example.com", "password": "CreatedPass123"})
         assert res.status_code == 201
 
-    def test_register_multiple_valid_users(self, client, db_session_fixture: Session):
+    def test_register_multiple_valid_users(self, client, db_session: Session):
         """Test that multiple users can be registered successfully"""
         users_data = [
             {"name": "User1", "email": "user1@example.com", "password": "Pass1111"},
@@ -181,7 +169,7 @@ class TestRegistration:
             res = client.post("/api/register", json=data)
             assert res.status_code == 201
 
-        user_count = db_session_fixture.query(User).count()
+        user_count = db_session.query(User).count()
         assert user_count == 3
 
     def test_register_password_with_special_characters(self, client):

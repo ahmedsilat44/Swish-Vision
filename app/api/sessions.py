@@ -15,7 +15,7 @@ ALLOWED_EXTENSIONS = {".mp4", ".avi", ".mov", ".mkv"}
 ALLOWED_MIME_TYPES = {"video/mp4", "video/x-msvideo", "video/quicktime", "video/x-matroska"}
 
 
-async def verify_session_ownership(
+def verify_session_ownership(
     session_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),

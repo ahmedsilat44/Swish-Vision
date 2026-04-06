@@ -54,7 +54,7 @@ class TestRegistration:
         assert res.status_code == 409
         assert "Email already registered" in res.json()["detail"]
 
-    @pytest.mark.xfail(reason="Case-insensitive email uniqueness is not guaranteed in the current test environment")
+    @pytest.mark.xfail(reason="Case-insensitive email uniqueness is not guaranteed in the current test environment", strict=True)
     def test_register_duplicate_email_case_insensitive(self, client):
         """Test that email validation is case-insensitive"""
         payload = {"name": "David", "email": "test@example.com", "password": "Password123"}

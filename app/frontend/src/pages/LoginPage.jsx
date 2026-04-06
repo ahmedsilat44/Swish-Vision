@@ -165,7 +165,7 @@ export function LoginPage({ onLoginSuccess, onGoToRegister }) {
     setApiError("");
 
     try {
-      const res = await fetch(`${API_URL}/api/auth/login`, {
+      const res = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: form.email, password: form.password }),
@@ -213,8 +213,9 @@ export function LoginPage({ onLoginSuccess, onGoToRegister }) {
 
         {/* Email */}
         <div style={styles.field}>
-          <label style={styles.label}>Email</label>
+          <label htmlFor="email" style={styles.label}>Email</label>
           <input
+            id="email"
             style={{ ...styles.input, ...(errors.email ? styles.inputError : {}) }}
             type="email"
             name="email"
@@ -228,8 +229,9 @@ export function LoginPage({ onLoginSuccess, onGoToRegister }) {
 
         {/* Password */}
         <div style={styles.field}>
-          <label style={styles.label}>Password</label>
+          <label htmlFor="password" style={styles.label}>Password</label>
           <input
+            id="password"
             style={{ ...styles.input, ...(errors.password ? styles.inputError : {}) }}
             type="password"
             name="password"
@@ -280,7 +282,7 @@ export function LogoutButton({ onLogout }) {
 
       // Optional: tell the backend to invalidate the token
       if (token) {
-        await fetch(`${API_URL}/api/auth/logout`, {
+        await fetch(`${API_URL}/auth/logout`, {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${token}`,

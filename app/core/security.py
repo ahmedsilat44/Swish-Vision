@@ -47,12 +47,14 @@ def get_current_user(
     return user
 
 def get_session_or_403(session_id: int, current_user: User, db: Session):
-    """Verify session exists and belongs to current user"""
+    """Return the session if it exists and belongs to the current user."""
     session = db.query(SessionModel).filter(
-        SessionModel.id == session_id,
-        SessionModel.user_id == current_user.id
+        SessionModel.id == session_id
     ).first()
-    
+
     if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    if session.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
     return session

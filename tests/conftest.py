@@ -51,7 +51,11 @@ app.dependency_overrides[get_db] = override_get_db
 @pytest.fixture(scope="function")
 def client():
     """Fixture that provides a test client"""
-    return TestClient(app)
+    client = TestClient(app)
+    try:
+        yield client
+    finally:
+        client.close()
 
 
 @pytest.fixture

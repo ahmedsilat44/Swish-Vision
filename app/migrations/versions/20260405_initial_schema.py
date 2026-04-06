@@ -95,4 +95,5 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_sessions_user_id"), table_name="sessions")
     op.drop_table("sessions")
 
+    op.drop_index(op.f("ix_users_email"), table_name="users")
     op.drop_table("users")

@@ -18,7 +18,7 @@ This guide covers local developer setup for:
 
 | Tool | Recommended Version |
 |------|---------------------|
-| Python | 3.13+ |
+| Python | 3.8+ |
 | Node.js | 18+ |
 | SQL Server | 2019+ |
 | ODBC Driver | SQL Server ODBC driver installed locally |
@@ -92,11 +92,9 @@ Important:
 
 ### 1.3 Frontend env file
 
-Create `app/frontend/.env`:
+No frontend `.env` file is currently required for local development.
 
-```env
-REACT_APP_API_URL=http://localhost:8000/api
-```
+The React app uses the Create React App development proxy for backend API requests, so you do not need to set `REACT_APP_API_URL` unless the frontend is updated to explicitly read that variable in the future.
 
 ## 2. Dependency Installation
 
@@ -211,8 +209,9 @@ pytest tests/test_sessions.py -q
 
 Test notes:
 
-- Current tests use the configured app database connection.
-- Create a dedicated local test database if you do not want to run tests against your development DB.
+- Tests override the app's `get_db` dependency in pytest to use a temporary SQLite database.
+- You do not need to create or configure a separate local test database for the standard test suite.
+- The configured application database connection is not used by these tests.
 
 ## 7. Common Issues
 

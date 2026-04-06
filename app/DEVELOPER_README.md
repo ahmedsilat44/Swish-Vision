@@ -92,11 +92,9 @@ Important:
 
 ### 1.3 Frontend env file
 
-Create `app/frontend/.env`:
+No frontend `.env` file is currently required for local development.
 
-```env
-REACT_APP_API_URL=http://localhost:8000/api
-```
+The React app uses the Create React App development proxy for backend API requests, so you do not need to set `REACT_APP_API_URL` unless the frontend is updated to explicitly read that variable in the future.
 
 ## 2. Dependency Installation
 

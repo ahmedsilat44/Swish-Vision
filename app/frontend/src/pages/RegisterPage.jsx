@@ -258,6 +258,7 @@ export function RegisterPage({ onRegisterSuccess, onGoToLogin }) {
 
     try {
       const res = await fetch(`${API_URL}/auth/register`, {
+
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -315,6 +316,7 @@ export function RegisterPage({ onRegisterSuccess, onGoToLogin }) {
             <label htmlFor="firstName" style={styles.label}>First Name</label>
             <input
               id="firstName"
+
               style={getInputStyle("firstName")}
               type="text"
               name="firstName"

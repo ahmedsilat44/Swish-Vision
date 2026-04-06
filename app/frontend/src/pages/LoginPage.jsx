@@ -166,6 +166,7 @@ export function LoginPage({ onLoginSuccess, onGoToRegister }) {
 
     try {
       const res = await fetch(`${API_URL}/auth/login`, {
+
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: form.email, password: form.password }),
@@ -216,6 +217,7 @@ export function LoginPage({ onLoginSuccess, onGoToRegister }) {
           <label htmlFor="email" style={styles.label}>Email</label>
           <input
             id="email"
+
             style={{ ...styles.input, ...(errors.email ? styles.inputError : {}) }}
             type="email"
             name="email"
@@ -229,6 +231,7 @@ export function LoginPage({ onLoginSuccess, onGoToRegister }) {
 
         {/* Password */}
         <div style={styles.field}>
+
           <label htmlFor="password" style={styles.label}>Password</label>
           <input
             id="password"
@@ -254,13 +257,20 @@ export function LoginPage({ onLoginSuccess, onGoToRegister }) {
 
         <div style={styles.footer}>
           Don't have an account?{" "}
-          <a
-            style={styles.link}
-            href="#"
-            onClick={(e) => { e.preventDefault(); if (onGoToRegister) onGoToRegister(); }}
+          <button
+            type="button"
+            style={{
+              ...styles.link,
+              background: "none",
+              border: "none",
+              padding: 0,
+              cursor: "pointer",
+              font: "inherit",
+            }}
+            onClick={() => { if (onGoToRegister) onGoToRegister(); }}
           >
             Register
-          </a>
+          </button>
         </div>
       </div>
     </div>
@@ -283,6 +293,7 @@ export function LogoutButton({ onLogout }) {
       // Optional: tell the backend to invalidate the token
       if (token) {
         await fetch(`${API_URL}/auth/logout`, {
+
           method: "POST",
           headers: {
             "Authorization": `Bearer ${token}`,

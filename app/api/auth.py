@@ -57,6 +57,9 @@ def logout(
     jti = payload.get("jti")
     exp_ts = payload.get("exp")
     expires_at = datetime.fromtimestamp(exp_ts, tz=timezone.utc)
-    db.add(RevokedToken(jti=jti, expires_at=expires_at))
-    db.commit()
+
+    existing_revocation = db.query(RevokedToken).filter(RevokedToken.jti == jti).first()
+    if not existing_revocation:
+        db.add(RevokedToken(jti=jti, expires_at=expires_at))
+        db.commit()
     return {"message": "Logged out successfully"}

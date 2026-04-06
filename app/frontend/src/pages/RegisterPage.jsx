@@ -409,13 +409,13 @@ export function RegisterPage({ onRegisterSuccess, onGoToLogin }) {
 
         <div style={styles.footer}>
           Already have an account?{" "}
-          <a
+          <button
+            type="button"
             style={styles.link}
-            href="#"
-            onClick={(e) => { e.preventDefault(); if (onGoToLogin) onGoToLogin(); }}
+            onClick={() => { if (onGoToLogin) onGoToLogin(); }}
           >
             Sign in
-          </a>
+          </button>
         </div>
       </div>
     </div>

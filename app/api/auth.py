@@ -1,9 +1,14 @@
 from fastapi import APIRouter, HTTPException, Depends
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
+from jose import jwt
+from datetime import datetime, timezone
 from app.database import get_db
 from app.models.user import User
+from app.models.revoked_token import RevokedToken
 from app.schemas.auth import RegisterRequest, LoginRequest, TokenResponse
-from app.core.security import hash_password, verify_password, create_access_token, get_current_user
+from app.core.security import hash_password, verify_password, create_access_token, get_current_user, security_scheme
+from app.config import settings
 import re
 
 router = APIRouter(prefix="/api", tags=["auth"])
@@ -42,5 +47,16 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/logout")
-def logout(current_user: User = Depends(get_current_user)):
+def logout(
+    credentials: HTTPAuthorizationCredentials = Depends(security_scheme),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    token = credentials.credentials
+    payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+    jti = payload.get("jti")
+    exp_ts = payload.get("exp")
+    expires_at = datetime.fromtimestamp(exp_ts, tz=timezone.utc)
+    db.add(RevokedToken(jti=jti, expires_at=expires_at))
+    db.commit()
     return {"message": "Logged out successfully"}

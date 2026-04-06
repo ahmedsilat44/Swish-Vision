@@ -3,6 +3,9 @@ from fastapi import FastAPI
 from app.database import engine, Base
 from app.api import auth, sessions, dashboard
 from app.core.middleware import setup_middleware
+import app.models.user  # noqa: F401 – ensure tables are registered with Base
+import app.models.session  # noqa: F401
+import app.models.revoked_token  # noqa: F401
 
 
 @asynccontextmanager

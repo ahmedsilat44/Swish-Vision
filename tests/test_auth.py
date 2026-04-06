@@ -148,7 +148,12 @@ class TestRegistration:
     def test_register_empty_name(self, client):
         """Test that empty name is accepted (no specific validation mentioned)"""
         res = client.post("/api/register", json={"name": "", "email": "emptyname@example.com", "password": "Password123"})
-        assert res.status_code in [201, 422]
+        assert res.status_code == 201
+        body = res.json()
+        assert "access_token" in body
+        assert body["token_type"] == "bearer"
+        assert isinstance(body["access_token"], str)
+        assert len(body["access_token"]) > 0
 
     def test_register_empty_email(self, client):
         """Test that empty email is rejected"""

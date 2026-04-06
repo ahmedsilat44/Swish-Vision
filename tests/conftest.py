@@ -84,5 +84,5 @@ def cleanup_test_db():
     yield
     try:
         os.unlink(test_db_path)
-    except Exception as e:
+    except FileNotFoundError:
         pass

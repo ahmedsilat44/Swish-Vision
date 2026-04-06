@@ -40,12 +40,12 @@ def get_current_user(
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
         user_id = payload.get("sub")
         jti = payload.get("jti")
-        if user_id is None or jti is None:
+        if user_id is None:
             raise HTTPException(status_code=401, detail="Invalid token")
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    if db.query(RevokedToken).filter(RevokedToken.jti == jti).first():
+    if jti is not None and db.query(RevokedToken).filter(RevokedToken.jti == jti).first():
         raise HTTPException(status_code=401, detail="Token has been revoked")
 
     user = db.query(User).filter(User.id == int(user_id)).first()

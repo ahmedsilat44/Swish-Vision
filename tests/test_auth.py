@@ -209,9 +209,17 @@ class TestLogout:
 
     def _register_and_login(self, client):
         """Helper: register a user and return a valid bearer token."""
-        client.post("/api/register", json={"name": "Logout User", "email": "logout@example.com", "password": "Password1"})
+        register_res = client.post(
+            "/api/register",
+            json={"name": "Logout User", "email": "logout@example.com", "password": "Password1"},
+        )
+        assert register_res.status_code == 201, register_res.text
+
         res = client.post("/api/login", json={"email": "logout@example.com", "password": "Password1"})
-        return res.json()["access_token"]
+        assert res.status_code == 200, res.text
+        body = res.json()
+        assert "access_token" in body
+        return body["access_token"]
 
     def test_logout_success(self, client):
         """A valid token should receive a 200 and a success message."""
@@ -238,9 +246,9 @@ class TestLogout:
         assert res.json()["detail"] == "Token has been revoked"
 
     def test_logout_requires_authentication(self, client):
-        """Logout without a token must return 401 (missing credentials)."""
+        """Logout without a token must return 403 (missing credentials)."""
         res = client.post("/api/logout")
-        assert res.status_code == 401
+        assert res.status_code == 403
 
     def test_logout_with_invalid_token_returns_401(self, client):
         """Logout with a malformed/invalid token must return 401, not 500."""

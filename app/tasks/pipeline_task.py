@@ -14,6 +14,7 @@ def process_video(self, session_id: int):
     from app.models.session import SessionModel
 
     db = SessionLocal()
+    session = None
     try:
         session = db.query(SessionModel).filter(SessionModel.id == session_id).first()
         if not session:
@@ -40,7 +41,8 @@ def process_video(self, session_id: int):
 
     except Exception:
         traceback.print_exc()
-        session.status = "failed"
-        db.commit()
+        if session is not None:
+            session.status = "failed"
+            db.commit()
     finally:
         db.close()

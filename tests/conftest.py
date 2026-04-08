@@ -96,6 +96,7 @@ def clear_db_before_test():
 def cleanup_test_db():
     """Delete test database file after all tests"""
     yield
+    test_engine.dispose()
     try:
         os.unlink(test_db_path)
     except FileNotFoundError:

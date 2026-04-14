@@ -1,3 +1,4 @@
+from datetime import datetime
 import os
 import shutil
 import traceback
@@ -28,14 +29,22 @@ def process_video(self, session_id: int):
         input_path = os.path.join(input_dir, os.path.basename(session.upload_path))
         shutil.copy2(session.upload_path, input_path)
 
-        # TODO: Import and call the CV pipeline
-        # from main import main_pipeline
-        # main_pipeline(input_path)
+        vid_name = os.path.splitext(os.path.basename(session.upload_path))[0]
+        from main import main_pipeline
+        main_pipeline(input_path)
 
-        # TODO: Parse report and persist to DB
-        # TODO: Set session.output_path and session.report_path
+        output_vid_path = f"output_videos/output_{vid_name}_processed.avi"
+        report_path = f"output_videos/output_{vid_name}_report.txt"
 
+        if not os.path.exists(output_vid_path) or os.path.getsize(output_vid_path) == 0:
+            raise FileNotFoundError(f"Output video missing or empty: {output_vid_path}")
+        if not os.path.exists(report_path) or not os.path.getsize(report_path) == 0:
+            raise FileNotFoundError(f"Report file missing or empty: {report_path}")
+
+        session.output_video_path = output_vid_path
+        session.report_path = report_path
         session.status = "completed"
+        session.completion_time = datetime.utcnow()
         db.commit()
 
     except Exception:

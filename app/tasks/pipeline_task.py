@@ -15,6 +15,7 @@ def process_video(self, session_id: int):
     from app.models.session import SessionModel
 
     db = SessionLocal()
+    session = None
     try:
         session = db.query(SessionModel).filter(SessionModel.id == session_id).first()
         if not session:
@@ -32,6 +33,7 @@ def process_video(self, session_id: int):
         vid_name = os.path.splitext(os.path.basename(session.upload_path))[0]
         from main import main_pipeline
         main_pipeline(vid_name)
+        # raise Exception("Deliberate test failure for SCRUM-97")  # temporary
 
         output_vid_path = f"output_videos/output_{vid_name}_processed.avi"
         report_path = f"reports/{vid_name}_report.txt"
@@ -49,8 +51,15 @@ def process_video(self, session_id: int):
         db.commit()
 
     except Exception:
+        print("ERROR: Exception during video processing:")
         traceback.print_exc()
-        session.status = "failed"
-        db.commit()
+        if session is not None:
+            session.status = "failed"
+            db.commit()
+
+        if 'input_path' in locals() and os.path.exists(input_path):
+            print(input_path)
+            os.remove(input_path)
+
     finally:
         db.close()

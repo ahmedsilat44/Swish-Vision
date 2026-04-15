@@ -12,7 +12,7 @@ import sys
 BASE_URL = "http://localhost:8000"
 TEST_EMAIL = "test@example.com"
 TEST_PASSWORD = "testpassword123"
-TEST_VIDEO_PATH = "C:\\Users\\Mikaa\\Desktop\\Uni_stuff\\SWE\\Swish-Vision\\input_videos\\vid_test_2.mp4"  # Path to test video file
+TEST_VIDEO_PATH = "C:\\Users\\Mikaa\\Desktop\\Uni_stuff\\SWE\\Swish-Vision\\input_videos\\vid2.mp4"  # Path to test video file
 
 # Constants
 REGISTER_ENDPOINT = f"{BASE_URL}/api/register"

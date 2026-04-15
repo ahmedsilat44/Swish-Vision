@@ -1,0 +1,12 @@
+all in seperate terminals
+back:
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+front:
+cd app/frontend
+npm start
+
+celery:
+$env:PYTHONPATH="C:\Users\Mikaa\Desktop\Uni_stuff\SWE\Swish-Vision"; celery -A app.tasks.pipeline_task.celery_app worker --loglevel=info --pool=solo
+
+

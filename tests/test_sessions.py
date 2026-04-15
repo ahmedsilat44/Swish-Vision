@@ -9,7 +9,7 @@ def get_auth_token(client):
 class TestSessions:
     def test_list_sessions_unauthenticated(self, client):
         res = client.get("/api/sessions/")
-        assert res.status_code == 403
+        assert res.status_code == 401
 
     def test_list_sessions_empty(self, client):
         token = get_auth_token(client)

@@ -38,7 +38,7 @@ def process_video(self, session_id: int):
 
         if not os.path.exists(output_vid_path) or os.path.getsize(output_vid_path) == 0:
             raise FileNotFoundError(f"Output video missing or empty: {output_vid_path}")
-        if not os.path.exists(report_path) or not os.path.getsize(report_path) == 0:
+        if not os.path.exists(report_path) or os.path.getsize(report_path) == 0:
             raise FileNotFoundError(f"Report file missing or empty: {report_path}")
 
         session.output_video_path = output_vid_path

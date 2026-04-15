@@ -16,7 +16,7 @@ class RimTracker:
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
         for i in range(0, len(frame), batch_size):
             batch = frame[i:i + batch_size]
-            results = self.model.predict(batch, conf=0.25, device=device)
+            results = self.model.predict(batch, conf=0.25, device=device, verbose=False)
             detections += results
         return detections
     

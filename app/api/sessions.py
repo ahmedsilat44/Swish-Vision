@@ -57,8 +57,8 @@ async def upload_video(
     db.refresh(session)
 
     # TODO: Trigger Celery task here
-    # from app.tasks.pipeline_task import process_video
-    # process_video.delay(session.id)
+    from app.tasks.pipeline_task import process_video
+    process_video.delay(session.id)
 
     return session
 

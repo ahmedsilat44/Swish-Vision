@@ -31,14 +31,15 @@ def process_video(self, session_id: int):
 
         vid_name = os.path.splitext(os.path.basename(session.upload_path))[0]
         from main import main_pipeline
-        main_pipeline(input_path)
+        main_pipeline(vid_name)
 
         output_vid_path = f"output_videos/output_{vid_name}_processed.avi"
-        report_path = f"output_videos/output_{vid_name}_report.txt"
+        report_path = f"reports/{vid_name}_report.txt"
+
 
         if not os.path.exists(output_vid_path) or os.path.getsize(output_vid_path) == 0:
             raise FileNotFoundError(f"Output video missing or empty: {output_vid_path}")
-        if not os.path.exists(report_path) or not os.path.getsize(report_path) == 0:
+        if not os.path.exists(report_path) or os.path.getsize(report_path) == 0:
             raise FileNotFoundError(f"Report file missing or empty: {report_path}")
 
         session.output_video_path = output_vid_path

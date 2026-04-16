@@ -13,3 +13,4 @@ __pycache__/
 *.pyd
 /app/__pycache__
 /app/api/__pycache__
+*.pyc

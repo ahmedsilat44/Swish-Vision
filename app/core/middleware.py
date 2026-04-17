@@ -1,8 +1,13 @@
 from fastapi import FastAPI
+from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.middleware.cors import CORSMiddleware
-
+from app.config import settings
 
 def setup_middleware(app: FastAPI):
+    # HTTPS redirect only in production
+    if settings.ENV == "production":
+        app.add_middleware(HTTPSRedirectMiddleware)
+
     # CORS – allow React dev server and localhost origins
     app.add_middleware(
         CORSMiddleware,
@@ -22,5 +27,6 @@ def setup_middleware(app: FastAPI):
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
-        # TODO: Add CSP header in production
+        if settings.ENV == "production":
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         return response

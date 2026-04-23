@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     DB_USERNAME: str = ""
     DB_PASSWORD: str = ""
     REDIS_URL: str = "redis://localhost:6379/0"
+    CELERY_RESULT_BACKEND: str = "redis://localhost:6379/0"
     SECRET_KEY: str = "change-me-to-a-random-256-bit-secret"
     UPLOAD_DIR: str = "app/uploads"
     OUTPUT_DIR: str = "output_videos"

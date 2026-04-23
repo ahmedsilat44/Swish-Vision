@@ -1,10 +1,27 @@
 import os
 import shutil
 import traceback
+from datetime import datetime, timezone
 from celery import Celery
 from app.config import settings
 
-celery_app = Celery("swishvision", broker=settings.REDIS_URL)
+celery_app = Celery(
+    "swishvision",
+    broker=settings.REDIS_URL,
+    backend=settings.CELERY_RESULT_BACKEND,
+)
+
+celery_app.conf.update(
+    task_serializer="json",
+    accept_content=["json"],
+    result_serializer="json",
+    timezone="UTC",
+    enable_utc=True,
+    task_track_started=True,
+    broker_connection_retry_on_startup=True,
+    task_acks_late=True,
+    worker_prefetch_multiplier=1,
+)
 
 
 @celery_app.task(bind=True, max_retries=0)
@@ -14,6 +31,7 @@ def process_video(self, session_id: int):
     from app.models.session import SessionModel
 
     db = SessionLocal()
+    session = None
     try:
         session = db.query(SessionModel).filter(SessionModel.id == session_id).first()
         if not session:
@@ -28,19 +46,20 @@ def process_video(self, session_id: int):
         input_path = os.path.join(input_dir, os.path.basename(session.upload_path))
         shutil.copy2(session.upload_path, input_path)
 
-        # TODO: Import and call the CV pipeline
-        # from main import main_pipeline
-        # main_pipeline(input_path)
+        # Run the CV pipeline
+        from main import run_pipeline
+        output_path, report_path = run_pipeline(input_path, session_id=session_id)
 
-        # TODO: Parse report and persist to DB
-        # TODO: Set session.output_path and session.report_path
-
+        session.output_path = output_path
+        session.report_path = report_path
         session.status = "completed"
+        session.completed_at = datetime.now(timezone.utc)
         db.commit()
 
     except Exception:
         traceback.print_exc()
-        session.status = "failed"
-        db.commit()
+        if session is not None:
+            session.status = "failed"
+            db.commit()
     finally:
         db.close()

@@ -246,3 +246,42 @@ Fix:
 - Do not commit `.env`.
 - Replace `SECRET_KEY` before shared/staging/prod environments.
 - Use HTTPS termination in non-local environments (reverse proxy or ingress).
+
+## 9. Running Behind a Reverse Proxy (HTTPS / Proxy Headers)
+
+In production the app is typically placed behind a reverse proxy (nginx, a cloud load balancer, Kubernetes ingress, etc.) that terminates TLS. The proxy then forwards plain HTTP to the app.
+
+When `ENV=production` is set, `HTTPSRedirectMiddleware` is enabled. Without proxy-header trust, the app always sees plain HTTP—even for requests that arrived over HTTPS—and will redirect every request to HTTPS indefinitely (**infinite redirect loop**).
+
+### Trusted proxy headers (recommended in-app fix)
+
+Start Uvicorn with `--proxy-headers` and restrict which upstream IPs may set those headers:
+
+```bash
+# Trust a specific proxy IP (recommended for production)
+uvicorn app.main:app --proxy-headers --forwarded-allow-ips=<proxy-ip> --host 0.0.0.0 --port 8000
+
+# Trust all upstream IPs (only use if the app is fully behind a controlled network)
+uvicorn app.main:app --proxy-headers --forwarded-allow-ips=* --host 0.0.0.0 --port 8000
+```
+
+With `--proxy-headers` enabled, Uvicorn reads `X-Forwarded-Proto` from the proxy and reports the correct scheme to the middleware, preventing the redirect loop.
+
+### Preferred alternative: redirect at the proxy layer
+
+Handle HTTP→HTTPS redirection in nginx/ingress and remove the need for in-app middleware entirely. Example nginx snippet:
+
+```nginx
+server {
+    listen 80;
+    server_name example.com;
+    return 301 https://$host$request_uri;
+}
+```
+
+This is the simpler and more robust approach for most deployments.
+
+### Local development
+
+No action needed. `ENV` defaults to `development`, so `HTTPSRedirectMiddleware` is never added and the app runs over plain HTTP on `localhost:8000`.
+

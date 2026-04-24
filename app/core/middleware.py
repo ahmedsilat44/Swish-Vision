@@ -4,7 +4,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 
 def setup_middleware(app: FastAPI):
-    # HTTPS redirect only in production
+    # HTTPS redirect only in production.
+    # WARNING: HTTPSRedirectMiddleware determines the scheme from the raw
+    # incoming request. If this app runs behind a reverse proxy or ingress that
+    # terminates TLS (nginx, a cloud load-balancer, Kubernetes ingress, etc.),
+    # the app will always see plain-HTTP requests, causing an infinite redirect
+    # loop.  Preferred approach: handle the HTTP→HTTPS redirect at the
+    # proxy/ingress layer.  If you must do it in-app, run the ASGI server with
+    # proxy-header trust enabled, e.g.:
+    #   uvicorn app.main:app --proxy-headers --forwarded-allow-ips=<proxy-ip>
+    # so that X-Forwarded-Proto is honoured before this middleware inspects the
+    # scheme.
     if settings.ENV == "production":
         app.add_middleware(HTTPSRedirectMiddleware)
 

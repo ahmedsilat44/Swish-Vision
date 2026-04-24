@@ -1,5 +1,7 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 export default function UploadPage() {
   const [file, setFile] = useState(null);
@@ -7,7 +9,12 @@ export default function UploadPage() {
   const [error, setError] = useState('');
   const [status, setStatus] = useState('idle'); // idle | uploading | queued | failed
   const inputRef = useRef();
+  const xhrRef = useRef(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    return () => { xhrRef.current?.abort(); };
+  }, []);
 
   const ALLOWED_EXTS = ['.mp4', '.avi', '.mov', '.mkv'];
   const MAX_BYTES = 500 * 1024 * 1024;
@@ -45,7 +52,10 @@ export default function UploadPage() {
   }
 
   function upload() {
-    const token = localStorage.getItem('token');
+    setProgress(0);
+    setError('');
+
+    const token = localStorage.getItem('access_token');
     if (!token) {
       setError('You must be logged in to upload');
       setStatus('failed');
@@ -53,6 +63,7 @@ export default function UploadPage() {
     }
 
     const xhr = new XMLHttpRequest();
+    xhrRef.current = xhr;
     const fd = new FormData();
     fd.append('file', file);
 
@@ -67,6 +78,7 @@ export default function UploadPage() {
         const data = JSON.parse(xhr.responseText);
         setStatus('queued');
         setProgress(100);
+        navigate(`/sessions/${data.id}`);
       } else if (xhr.status === 409) {
         setError('Cannot upload while another session is processing');
         setStatus('failed');
@@ -86,10 +98,12 @@ export default function UploadPage() {
       setStatus('failed');
     };
 
-    xhr.open('POST', '/api/sessions/upload');
+    xhr.onabort = () => {};
+
+    xhr.open('POST', `${API_URL}/api/sessions/upload`);
     xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-    xhr.send(fd);
     setStatus('uploading');
+    xhr.send(fd);
   }
 
   return (

@@ -92,7 +92,10 @@ def delete_session(
     # Remove all associated files
     for path in [session.upload_path, session.output_path, session.report_path]:
         if path and os.path.exists(path):
-            os.remove(path)
+            try:
+                os.remove(path)
+            except OSError:
+                pass  # File may have already been removed; proceed with DB deletion
 
     db.delete(session)
     db.commit()

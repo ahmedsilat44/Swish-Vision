@@ -14,7 +14,13 @@ export default function UploadPage() {
 
   function handleFile(f) {
     if (!f) return;
-    const ext = f.name.slice(f.name.lastIndexOf('.')).toLowerCase();
+    const dotIndex = f.name.lastIndexOf('.');
+    if (dotIndex === -1 || dotIndex === f.name.length - 1) {
+      setError('Unsupported file type. Allowed: .mp4, .avi, .mov, .mkv');
+      setFile(null);
+      return;
+    }
+    const ext = f.name.slice(dotIndex).toLowerCase();
     if (!ALLOWED_EXTS.includes(ext)) {
       setError('Unsupported file type. Allowed: .mp4, .avi, .mov, .mkv');
       setFile(null);

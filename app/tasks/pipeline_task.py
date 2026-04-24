@@ -50,11 +50,6 @@ def process_video(self, session_id: int):
         # Run the CV pipeline
         from main import run_pipeline
         output_path, report_path = run_pipeline(input_path, session_id=session_id)
-        
-        if not os.path.exists(output_path) or os.path.getsize(output_path) == 0:
-            raise FileNotFoundError(f"Output video missing or empty: {output_path}")
-        if not os.path.exists(report_path) or os.path.getsize(report_path) == 0:
-            raise FileNotFoundError(f"Report file missing or empty: {report_path}")
 
         if not os.path.exists(output_path) or os.path.getsize(output_path) == 0:
             raise FileNotFoundError(f"Output video missing or empty: {output_path}")

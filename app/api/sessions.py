@@ -9,6 +9,7 @@ from app.models.user import User
 from app.models.session import SessionModel
 from app.schemas.session import SessionResponse, SessionListResponse, ShotAnalyticsResponse, AngleDataResponse
 from app.core.security import get_current_user, get_session_or_403
+from app.tasks.pipeline_task import process_video
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 
@@ -45,9 +46,19 @@ async def upload_video(
     db.commit()
     db.refresh(session)
 
+    max_bytes = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
     filepath = os.path.join(settings.UPLOAD_DIR, f"{session.id}{ext}")
+    bytes_written = 0
     with open(filepath, "wb") as f:
-        shutil.copyfileobj(file.file, f)
+        while chunk := await file.read(1024 * 1024):
+            bytes_written += len(chunk)
+            if bytes_written > max_bytes:
+                f.close()
+                os.remove(filepath)
+                raise HTTPException(status_code=413, detail=f"File exceeds {settings.MAX_UPLOAD_SIZE_MB} MB limit")
+            f.write(chunk)
+
+    await file.close()
 
     session.status = "queued"
     session.upload_path = filepath

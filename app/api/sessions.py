@@ -1,5 +1,6 @@
 import os
 import shutil
+import logging
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from sqlalchemy.orm import Session
 from app.database import get_db
@@ -8,12 +9,12 @@ from app.models.user import User
 from app.models.session import SessionModel
 from app.schemas.session import SessionResponse, SessionListResponse, ShotAnalyticsResponse, AngleDataResponse
 from app.core.security import get_current_user, get_session_or_403
+from app.tasks.pipeline_task import process_video
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 
 ALLOWED_EXTENSIONS = {".mp4", ".avi", ".mov", ".mkv"}
 ALLOWED_MIME_TYPES = {"video/mp4", "video/x-msvideo", "video/quicktime", "video/x-matroska"}
-
 
 def verify_session_ownership(
     session_id: int,
@@ -22,8 +23,6 @@ def verify_session_ownership(
 ):
     """Dependency that validates session ownership"""
     return get_session_or_403(session_id, current_user, db)
-
-
 
 @router.post("/upload", response_model=SessionResponse, status_code=201)
 async def upload_video(
@@ -47,27 +46,39 @@ async def upload_video(
     db.commit()
     db.refresh(session)
 
+    max_bytes = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
     filepath = os.path.join(settings.UPLOAD_DIR, f"{session.id}{ext}")
+    bytes_written = 0
     with open(filepath, "wb") as f:
-        shutil.copyfileobj(file.file, f)
+        while chunk := await file.read(1024 * 1024):
+            bytes_written += len(chunk)
+            if bytes_written > max_bytes:
+                f.close()
+                os.remove(filepath)
+                raise HTTPException(status_code=413, detail=f"File exceeds {settings.MAX_UPLOAD_SIZE_MB} MB limit")
+            f.write(chunk)
+
+    await file.close()
 
     session.status = "queued"
     session.upload_path = filepath
     db.commit()
     db.refresh(session)
 
-    # TODO: Trigger Celery task here
-    # from app.tasks.pipeline_task import process_video
-    # process_video.delay(session.id)
+    from app.tasks.pipeline_task import process_video
+    try:
+        process_video.delay(session.id)
+    except Exception as exc:
+        logging.warning("Celery dispatch failed (is Redis running?): %s", exc)
+        session.status = "pending"
+        db.commit()
 
     return session
-
 
 @router.get("/", response_model=list[SessionListResponse])
 def list_sessions(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     sessions = db.query(SessionModel).filter(SessionModel.user_id == current_user.id).order_by(SessionModel.created_at.desc()).all()
     return sessions
-
 
 @router.get("/{session_id}", response_model=SessionResponse)
 def get_session(session: SessionModel = Depends(verify_session_ownership)):
@@ -78,25 +89,30 @@ def get_shots(session: SessionModel = Depends(verify_session_ownership)):
     # TODO: Query shot_events and build response
     return {"session_id": session.id, "shots": [], "total_shots": 0, "makes": 0, "misses": 0}
 
-
-
 @router.get("/{session_id}/angles", response_model=AngleDataResponse)
 def get_angles(session: SessionModel = Depends(verify_session_ownership)):
     # TODO: Query angle_frames and build response
     return {"session_id": session.id, "frames": []}
-
 
 @router.delete("/{session_id}", status_code=204)
 def delete_session(
     session: SessionModel = Depends(verify_session_ownership),
     db: Session = Depends(get_db),
 ):
-    # Remove files
-    if session.upload_path and os.path.exists(session.upload_path):
-        os.remove(session.upload_path)
-    if session.output_path and os.path.exists(session.output_path):
-        os.remove(session.output_path)
+    # Guard: cannot delete while processing
+    if session.status == "processing":
+        raise HTTPException(
+            status_code=409,
+            detail="Cannot delete a session while it is being processed"
+        )
+
+    # Remove all associated files
+    for path in [session.upload_path, session.output_path, session.report_path]:
+        if path and os.path.exists(path):
+            try:
+                os.remove(path)
+            except OSError:
+                pass  # File may have already been removed; proceed with DB deletion
 
     db.delete(session)
     db.commit()
-

@@ -1,6 +1,8 @@
+import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from app.database import engine, Base
+from app.config import settings
 from app.api import auth, sessions, dashboard
 from app.core.middleware import setup_middleware
 import app.models  # noqa: F401 – importing the package registers all models with Base
@@ -9,6 +11,8 @@ import app.models  # noqa: F401 – importing the package registers all models w
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
+    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+    os.makedirs(settings.OUTPUT_DIR, exist_ok=True)
     yield
 
 

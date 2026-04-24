@@ -24,6 +24,7 @@ python-multipart==0.0.22
 
 # Task queue
 celery==5.6.3
+redis==5.2.1
 
 # Async / server internals
 anyio==4.13.0

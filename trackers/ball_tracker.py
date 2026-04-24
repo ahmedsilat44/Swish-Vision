@@ -18,7 +18,7 @@ class BallTracker:
         for i in range(0, len(frame), batch_size):
             batch = frame[i:i + batch_size]
             
-            results = self.model.predict(batch, conf=0.25, device=device) 
+            results = self.model.predict(batch, conf=0.25, device=device, verbose=False) 
             detections += results
         return detections
     
@@ -29,9 +29,7 @@ class BallTracker:
             cls_names = detection.names
             cls_names_inv = {v: k for k, v in cls_names.items()}
 
-            
-
-
+        
             detection_supervision = sv.Detections.from_ultralytics(detection)
 
 
@@ -156,8 +154,8 @@ class BallTracker:
                 box = track["bbox"]
 
                 # Debug log
-                with open("ball_locl.txt", "a") as f:
-                    f.write(str(box) + "\n")
+                # with open("ball_locl.txt", "a") as f:
+                #     f.write(str(box) + "\n")
 
                 if label == "Basketball":
                     ball_loco.append(box)

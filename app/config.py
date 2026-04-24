@@ -2,6 +2,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
+    ENV: str = "development"  # development | staging | production
     DB_SERVER: str = "localhost"
     DB_NAME: str = "SwishVision"
     DB_DRIVER: str = "ODBC Driver 17 for SQL Server"

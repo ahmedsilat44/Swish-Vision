@@ -1,5 +1,8 @@
 # Ignore common output directories that may contain generated videos
 /output_videos/
+/input_videos/
+/reports/
+/app/uploads/
 
 # Environment variables
 .env
@@ -11,8 +14,4 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
-/app/__pycache__
-/app/api/__pycache__
-*.pyc
-/reports
-/app/uploads
+ball_locl.txt

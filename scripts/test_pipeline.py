@@ -4,23 +4,27 @@ Standalone test script for Swish-Vision pipeline.
 Tests the complete flow: login -> upload -> poll for completion.
 """
 
+import argparse
+import os
 import requests
 import time
 import sys
 
-# Configuration
-BASE_URL = "http://localhost:8000"
-TEST_EMAIL = "test@example.com"
-TEST_PASSWORD = "testpassword123"
-TEST_VIDEO_PATH = "C:\\Users\\Mikaa\\Desktop\\Uni_stuff\\SWE\\Swish-Vision\\input_videos\\vid2.mp4"  # Path to test video file
+# Configuration - override via environment variables or --base-url / --video CLI args
+BASE_URL = os.getenv("SWISHVISION_BASE_URL", "http://localhost:8000")
+TEST_EMAIL = os.getenv("SWISHVISION_TEST_EMAIL", "test@example.com")
+TEST_PASSWORD = os.getenv("SWISHVISION_TEST_PASSWORD", "testpassword123")
+TEST_VIDEO_PATH = os.getenv("SWISHVISION_TEST_VIDEO", "")
 
 # Constants
-REGISTER_ENDPOINT = f"{BASE_URL}/api/register"
-LOGIN_ENDPOINT = f"{BASE_URL}/api/login"
+REGISTER_ENDPOINT = f"{BASE_URL}/api/auth/register"
+LOGIN_ENDPOINT = f"{BASE_URL}/api/auth/login"
 UPLOAD_ENDPOINT = f"{BASE_URL}/api/sessions/upload"
 SESSION_ENDPOINT = f"{BASE_URL}/api/sessions"
-POLL_INTERVAL = 5  # seconds
+POLL_INTERVAL = 5   # seconds
 POLL_TIMEOUT = 600  # 10 minutes max
+REQUEST_TIMEOUT = 30   # seconds for regular requests
+UPLOAD_TIMEOUT = 300   # seconds for file upload
 
 
 def register():
@@ -39,7 +43,7 @@ def register():
     }
     
     try:
-        response = requests.post(REGISTER_ENDPOINT, json=payload)
+        response = requests.post(REGISTER_ENDPOINT, json=payload, timeout=REQUEST_TIMEOUT)
         
         if response.status_code == 409:
             print(f"✓ User already exists")
@@ -68,7 +72,7 @@ def login():
     }
     
     try:
-        response = requests.post(LOGIN_ENDPOINT, json=payload)
+        response = requests.post(LOGIN_ENDPOINT, json=payload, timeout=REQUEST_TIMEOUT)
         response.raise_for_status()
     except requests.exceptions.RequestException as e:
         print(f"ERROR: Login request failed: {e}")
@@ -106,7 +110,7 @@ def upload_video(token):
     try:
         with open(TEST_VIDEO_PATH, "rb") as f:
             files = {"file": (TEST_VIDEO_PATH.split("\\")[-1], f, "video/mp4")}
-            response = requests.post(UPLOAD_ENDPOINT, files=files, headers=headers)
+            response = requests.post(UPLOAD_ENDPOINT, files=files, headers=headers, timeout=UPLOAD_TIMEOUT)
             response.raise_for_status()
     except FileNotFoundError:
         print(f"ERROR: Test video file not found: {TEST_VIDEO_PATH}")
@@ -168,7 +172,8 @@ def poll_session_status(session_id, token):
         try:
             response = requests.get(
                 f"{SESSION_ENDPOINT}/{session_id}",
-                headers=headers
+                headers=headers,
+                timeout=REQUEST_TIMEOUT,
             )
             response.raise_for_status()
         except requests.exceptions.RequestException as e:
@@ -193,6 +198,33 @@ def poll_session_status(session_id, token):
 
 def main():
     """Run the complete test pipeline."""
+    parser = argparse.ArgumentParser(description="Test the Swish-Vision pipeline end-to-end.")
+    parser.add_argument(
+        "--base-url",
+        default=None,
+        help="API base URL (overrides SWISHVISION_BASE_URL; default: http://localhost:8000)",
+    )
+    parser.add_argument(
+        "--video",
+        default=None,
+        help="Path to test video file (overrides SWISHVISION_TEST_VIDEO env var)",
+    )
+    args = parser.parse_args()
+
+    global BASE_URL, TEST_VIDEO_PATH, REGISTER_ENDPOINT, LOGIN_ENDPOINT, UPLOAD_ENDPOINT, SESSION_ENDPOINT
+    if args.base_url:
+        BASE_URL = args.base_url
+        REGISTER_ENDPOINT = f"{BASE_URL}/api/auth/register"
+        LOGIN_ENDPOINT = f"{BASE_URL}/api/auth/login"
+        UPLOAD_ENDPOINT = f"{BASE_URL}/api/sessions/upload"
+        SESSION_ENDPOINT = f"{BASE_URL}/api/sessions"
+    if args.video:
+        TEST_VIDEO_PATH = args.video
+
+    if not TEST_VIDEO_PATH:
+        print("ERROR: No test video path provided. Use --video or set SWISHVISION_TEST_VIDEO.")
+        return 1
+
     print("=" * 60)
     print("Swish-Vision Pipeline Test")
     print("=" * 60)

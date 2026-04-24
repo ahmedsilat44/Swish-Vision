@@ -49,16 +49,19 @@ async def upload_video(
     max_bytes = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
     filepath = os.path.join(settings.UPLOAD_DIR, f"{session.id}{ext}")
     bytes_written = 0
-    with open(filepath, "wb") as f:
-        while chunk := await file.read(1024 * 1024):
-            bytes_written += len(chunk)
-            if bytes_written > max_bytes:
-                f.close()
-                os.remove(filepath)
-                raise HTTPException(status_code=413, detail=f"File exceeds {settings.MAX_UPLOAD_SIZE_MB} MB limit")
-            f.write(chunk)
-
-    await file.close()
+    try:
+        with open(filepath, "wb") as f:
+            while chunk := await file.read(1024 * 1024):
+                bytes_written += len(chunk)
+                if bytes_written > max_bytes:
+                    f.close()
+                    os.remove(filepath)
+                    db.delete(session)
+                    db.commit()
+                    raise HTTPException(status_code=413, detail=f"File exceeds {settings.MAX_UPLOAD_SIZE_MB} MB limit")
+                f.write(chunk)
+    finally:
+        await file.close()
 
     session.status = "queued"
     session.upload_path = filepath

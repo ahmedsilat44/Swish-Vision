@@ -1,6 +1,5 @@
 from pydantic_settings import BaseSettings
 
-
 class Settings(BaseSettings):
     ENV: str = "development"  # development | staging | production
     DB_SERVER: str = "localhost"
@@ -16,6 +15,7 @@ class Settings(BaseSettings):
     OUTPUT_DIR: str = "output_videos"
     MODEL_DIR: str = "models"
     MAX_UPLOAD_SIZE_MB: int = 500
+    ENV: str = "development"  # set to "production" in prod .env
 
     @property
     def DATABASE_URL(self) -> str:
@@ -34,6 +34,5 @@ class Settings(BaseSettings):
 
     class Config:
         env_file = ".env"
-
 
 settings = Settings()

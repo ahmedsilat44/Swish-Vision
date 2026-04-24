@@ -211,6 +211,7 @@ export function RegisterPage({ onRegisterSuccess, onGoToLogin }) {
       case "password":
         if (!value) return "Password is required";
         if (value.length < 8) return "At least 8 characters";
+        if (!/[0-9]/.test(value)) return "Must contain at least one number";
         return "";
       case "confirmPassword":
         if (!value) return "Please confirm your password";
@@ -277,7 +278,6 @@ export function RegisterPage({ onRegisterSuccess, onGoToLogin }) {
 
       if (!res.ok) {
         if (res.status === 409) setApiError("An account with this email already exists.");
-        else if (res.status === 422) setApiError("Please check your details and try again.");
         else if (res.status === 429) setApiError("Too many attempts. Please wait a moment.");
         else setApiError(data?.detail || "Something went wrong. Please try again.");
         return;

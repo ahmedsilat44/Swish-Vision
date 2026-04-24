@@ -1,5 +1,6 @@
 import os
 import shutil
+import logging
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from sqlalchemy.orm import Session
 from app.database import get_db
@@ -53,9 +54,14 @@ async def upload_video(
     db.commit()
     db.refresh(session)
 
-    # TODO: Trigger Celery task here
-    # from app.tasks.pipeline_task import process_video
-    # process_video.delay(session.id)
+    from app.tasks.pipeline_task import process_video
+    try:
+        process_video.delay(session.id)
+    except Exception as exc:
+        logging.warning("Celery dispatch failed (is Redis running?): %s", exc)
+        session.status = "pending"
+        db.commit()
+
     return session
 
 @router.get("/", response_model=list[SessionListResponse])

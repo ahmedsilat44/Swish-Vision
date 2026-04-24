@@ -11,3 +11,8 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+/app/__pycache__
+/app/api/__pycache__
+*.pyc
+/reports
+/app/uploads

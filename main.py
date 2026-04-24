@@ -150,6 +150,32 @@ def main_pipeline(vidname):
     # print(len(video_frames))
 
 
+def run_pipeline(input_path: str, session_id: int = None) -> tuple:
+    """
+    Entry point for the Celery task.
+
+    Parameters
+    ----------
+    input_path : str
+        Absolute or relative path to the input video that has already been
+        copied into input_videos/.  Only the stem (name without extension) is
+        used to locate the file, so the file must reside in input_videos/.
+    session_id : int, optional
+        Database session ID (unused by the CV pipeline itself, reserved for
+        future report-persistence work).
+
+    Returns
+    -------
+    tuple[str, str]
+        (output_path, report_path) – paths produced by main_pipeline.
+    """
+    vidname = os.path.splitext(os.path.basename(input_path))[0]
+    main_pipeline(vidname)
+    output_path = os.path.join("output_videos", f"output_{vidname}_final_final.avi")
+    report_path = f"{vidname}_report.txt"
+    return output_path, report_path
+
+
 def main():
     # main_pipeline("vid14_1")
     # main_pipeline("vid13_1")

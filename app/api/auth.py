@@ -12,7 +12,7 @@ from app.core.security import hash_password, verify_password, create_access_toke
 from app.config import settings
 import re
 
-router = APIRouter(prefix="/api", tags=["auth"])
+router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
 def validate_password_strength(password: str) -> bool:
@@ -26,7 +26,7 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
     if db.query(User).filter(User.email == payload.email).first():
         raise HTTPException(status_code=409, detail="Email already registered")
     if not validate_password_strength(payload.password):
-        raise HTTPException(status_code=422, detail="Password too weak")
+        raise HTTPException(status_code=422, detail="Password must be at least 8 characters and contain both letters and a number.")
 
     user = User(name=payload.name, email=payload.email, password_hash=hash_password(payload.password))
     db.add(user)

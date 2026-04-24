@@ -138,7 +138,7 @@ def main_pipeline(vidname):
     print("Making video...")
 
    # write_video(four_out_video_frames, f"output_videos/output_{vidname}_second_angle.avi", fps=fps)
-    write_video(five_out_video_frames, f"output_videos/output_{vidname}_final_final.avi", fps=fps)
+    write_video(five_out_video_frames, f"output_videos/output_{vidname}_processed.avi", fps=fps)
 
     ##if using this dont forget to change in vid_utils.py the fourcc to mp4v
     # write_video(four_out_video_frames, f"output_videos/output_{vidname}.mp4", fps=fps)

@@ -1,3 +1,4 @@
+from datetime import datetime
 import os
 import shutil
 import traceback
@@ -49,11 +50,17 @@ def process_video(self, session_id: int):
         # Run the CV pipeline
         from main import run_pipeline
         output_path, report_path = run_pipeline(input_path, session_id=session_id)
+        
+        if not os.path.exists(output_path) or os.path.getsize(output_path) == 0:
+            raise FileNotFoundError(f"Output video missing or empty: {output_path}")
+        if not os.path.exists(report_path) or os.path.getsize(report_path) == 0:
+            raise FileNotFoundError(f"Report file missing or empty: {report_path}")
 
         session.output_path = output_path
         session.report_path = report_path
         session.status = "completed"
         session.completed_at = datetime.now(timezone.utc)
+
         db.commit()
 
     except Exception:

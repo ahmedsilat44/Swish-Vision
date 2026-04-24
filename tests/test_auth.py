@@ -246,9 +246,9 @@ class TestLogout:
         assert res.json()["detail"] == "Token has been revoked"
 
     def test_logout_requires_authentication(self, client):
-        """Logout without a token must return 403 (missing credentials)."""
+        """Logout without a token must return 401 (missing credentials)."""
         res = client.post("/api/logout")
-        assert res.status_code == 403
+        assert res.status_code == 401
 
     def test_logout_with_invalid_token_returns_401(self, client):
         """Logout with a malformed/invalid token must return 401, not 500."""

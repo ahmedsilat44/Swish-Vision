@@ -171,7 +171,7 @@ def run_pipeline(input_path: str, session_id: int = None) -> tuple:
     """
     vidname = os.path.splitext(os.path.basename(input_path))[0]
     main_pipeline(vidname)
-    output_path = os.path.join("output_videos", f"output_{vidname}_final_final.avi")
+    output_path = os.path.join("output_videos", f"output_{vidname}_processed.avi.avi")
     report_path = f"{vidname}_report.txt"
     return output_path, report_path
 

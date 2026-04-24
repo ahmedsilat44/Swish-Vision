@@ -55,17 +55,24 @@ def process_video(self, session_id: int):
             raise FileNotFoundError(f"Output video missing or empty: {output_path}")
         if not os.path.exists(report_path) or os.path.getsize(report_path) == 0:
             raise FileNotFoundError(f"Report file missing or empty: {report_path}")
-      
+
         session.output_path = output_path
         session.report_path = report_path
         session.status = "completed"
         session.completed_at = datetime.now(timezone.utc)
+
         db.commit()
 
     except Exception:
+        print("ERROR: Exception during video processing:")
         traceback.print_exc()
         if session is not None:
             session.status = "failed"
             db.commit()
+
+        if 'input_path' in locals() and os.path.exists(input_path):
+            print(input_path)
+            os.remove(input_path)
+
     finally:
         db.close()

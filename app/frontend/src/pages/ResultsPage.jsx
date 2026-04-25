@@ -112,6 +112,9 @@ export default function ResultsPage() {
   }
 
   // completed
+  const token = localStorage.getItem('access_token') || '';
+  const videoSrc = `${API_URL}/api/sessions/${sessionId}/output_video?token=${encodeURIComponent(token)}`;
+
   const doughnutData = {
     labels: ['Made', 'Missed'],
     datasets: [
@@ -176,6 +179,14 @@ export default function ResultsPage() {
             </table>
           </div>
         )}
+      </div>
+
+      {/* Annotated video player */}
+      <div style={s.card}>
+        <h3 style={s.cardTitle}>Annotated Video</h3>
+        <video controls width="100%" preload="metadata" style={s.video} src={videoSrc}>
+          Your browser does not support HTML5 video.
+        </video>
       </div>
 
       <button style={s.backBtn} onClick={() => navigate('/upload')}>
@@ -307,6 +318,11 @@ const s = {
     color: '#555',
     fontSize: '0.875rem',
     alignSelf: 'flex-start',
+  },
+  video: {
+    borderRadius: 8,
+    background: '#000',
+    display: 'block',
   },
   muted: {
     color: '#888',

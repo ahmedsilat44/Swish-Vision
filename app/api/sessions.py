@@ -1,7 +1,9 @@
 import os
 import shutil
 import logging
-from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
+import mimetypes
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Query
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.config import settings
@@ -13,7 +15,7 @@ from app.schemas.session import (
     SessionResponse, SessionListResponse,
     ShotAnalyticsResponse, ShotDetail, AngleDataResponse, ReportResponse,
 )
-from app.core.security import get_current_user, get_session_or_403
+from app.core.security import get_current_user, get_current_user_token, get_session_or_403
 from app.tasks.pipeline_task import process_video
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
@@ -139,6 +141,26 @@ def get_report(
         shots_made=report.makes,
         shots_missed=report.misses,
         total_shots=report.total_shots,
+    )
+
+
+@router.get("/{session_id}/output_video")
+def get_output_video(
+    session_id: int,
+    token: str = Query(...),
+    db: Session = Depends(get_db),
+):
+    current_user = get_current_user_token(token, db)
+    session = get_session_or_403(session_id, current_user, db)
+
+    if not session.output_path or not os.path.exists(session.output_path):
+        raise HTTPException(status_code=404, detail="Output video not available")
+
+    mime_type, _ = mimetypes.guess_type(session.output_path)
+    return FileResponse(
+        path=session.output_path,
+        media_type=mime_type or "video/octet-stream",
+        filename=os.path.basename(session.output_path),
     )
 
 

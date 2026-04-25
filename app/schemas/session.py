@@ -28,7 +28,7 @@ class SessionListResponse(BaseModel):
 
 class ShotDetail(BaseModel):
     shot_number: int
-    result: str
+    outcome: str  # "made" or "missed"
     release_angle: Optional[float] = None
     elbow_angle_at_release: Optional[float] = None
 
@@ -39,6 +39,14 @@ class ShotAnalyticsResponse(BaseModel):
     total_shots: int
     makes: int
     misses: int
+
+
+class ReportResponse(BaseModel):
+    session_id: int
+    shot_percentage: float
+    shots_made: int
+    shots_missed: int
+    total_shots: int
 
 
 class AngleFrameDetail(BaseModel):

@@ -63,11 +63,12 @@ def process_video(self, session_id: int):
 
         db.commit()
 
-    except Exception:
+    except Exception as exc:
         print("ERROR: Exception during video processing:")
         traceback.print_exc()
         if session is not None:
             session.status = "failed"
+            session.error_message = str(exc) or "An unexpected error occurred during processing."
             db.commit()
 
         if 'input_path' in locals() and os.path.exists(input_path):

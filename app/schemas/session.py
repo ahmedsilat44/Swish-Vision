@@ -8,6 +8,7 @@ class SessionResponse(BaseModel):
     user_id: int
     original_filename: str
     status: str
+    error_message: Optional[str] = None
     created_at: datetime
     completed_at: Optional[datetime] = None
 

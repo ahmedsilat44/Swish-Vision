@@ -186,8 +186,6 @@ class HumanTracksDrawer:
         Returns:
             list[np.ndarray]: frames with overlays (same length/order as input)
         """
-        with open("xy_coords.txt", "w") as f:
-            f.write("")
 
         out_frames = []
         for i, frame in enumerate(video_frames):
@@ -283,6 +281,7 @@ class HumanTracksDrawer:
         esh_max_thresh = 135   
 
         sew_list, esh_list = angles
+        shot_angles = []
 
         # 2) For each "shot" (unique leave_frame), analyze angle window
         for shot_num, frame_num in enumerate(leave_frames):
@@ -351,6 +350,8 @@ class HumanTracksDrawer:
                 verdict = [f"shot {shot_num+1}"] + ["NEEDS WORK: "] + issues
 
 
+
+            shot_angles.append((sew_min, esh_max))
             with open(f"./reports/{file_name}", "a") as f:
                 for item in verdict:
                     f.write(str(item))
@@ -386,6 +387,6 @@ class HumanTracksDrawer:
 
                 frames[draw_frame_index] = frame
 
-        return frames
+        return frames, shot_angles
 
         

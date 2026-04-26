@@ -117,7 +117,7 @@ def main_pipeline(vidname):
     human_tracks_drawer = HumanTracksDrawer()
     print("3")
     three_out_video_frames = human_tracks_drawer.draw(video_frames, human_tracks, angles, draw_boxes=False, draw_keypoints=True)
-    four_out_video_frames = human_tracks_drawer.analysis(three_out_video_frames, angles, ball_left_frames, shot_starts, f"{vidname}_report.txt")
+    four_out_video_frames, shot_angles = human_tracks_drawer.analysis(three_out_video_frames, angles, ball_left_frames, shot_starts, f"{vidname}_report.txt")
 
 
 
@@ -139,6 +139,11 @@ def main_pipeline(vidname):
 
    # write_video(four_out_video_frames, f"output_videos/output_{vidname}_second_angle.avi", fps=fps)
     write_video(five_out_video_frames, f"output_videos/output_{vidname}_processed.avi", fps=fps)
+    print("Video saved!")
+
+    return {"shot_angles": shot_angles, "ball_left_frames": ball_left_frames}
+
+
 
     ##if using this dont forget to change in vid_utils.py the fourcc to mp4v
     # write_video(four_out_video_frames, f"output_videos/output_{vidname}.mp4", fps=fps)
@@ -166,20 +171,20 @@ def run_pipeline(input_path: str, session_id: int = None) -> tuple:
 
     Returns
     -------
-    tuple[str, str]
-        (output_path, report_path) – paths produced by main_pipeline.
+    tuple[str, str, dict]
+        (output_path, report_path, pipeline_data) – paths and data produced by main_pipeline.
     """
     vidname = os.path.splitext(os.path.basename(input_path))[0]
-    main_pipeline(vidname)
-    output_path = os.path.join("output_videos", f"output_{vidname}_processed.avi.avi")
-    report_path = f"{vidname}_report.txt"
-    return output_path, report_path
+    pipeline_data = main_pipeline(vidname)
+    output_path = os.path.join("output_videos", f"output_{vidname}_processed.avi")
+    report_path = os.path.join("reports", f"{vidname}_report.txt")
+    return output_path, report_path, pipeline_data
 
 
 def main():
     # main_pipeline("vid14_1")
     # main_pipeline("vid13_1")
-    main_pipeline("vid18")
+    # main_pipeline("vid18")
     main_pipeline("vid20")
 
 if __name__ == "__main__":

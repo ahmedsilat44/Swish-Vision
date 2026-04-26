@@ -14,7 +14,7 @@ import sys
 BASE_URL = os.getenv("SWISHVISION_BASE_URL", "http://localhost:8000")
 TEST_EMAIL = os.getenv("SWISHVISION_TEST_EMAIL", "test@example.com")
 TEST_PASSWORD = os.getenv("SWISHVISION_TEST_PASSWORD", "testpassword123")
-TEST_VIDEO_PATH = os.getenv("SWISHVISION_TEST_VIDEO", "")
+TEST_VIDEO_PATH = os.getenv("SWISHVISION_TEST_VIDEO", "C:\\Users\\Mikaa\\Desktop\\Uni_stuff\\SWE\\Swish-Vision\\input_videos\\vid21.mp4")
 
 # Constants
 REGISTER_ENDPOINT = f"{BASE_URL}/api/auth/register"

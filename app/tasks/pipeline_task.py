@@ -30,6 +30,7 @@ def process_video(self, session_id: int):
     """Celery task wrapping the CV pipeline for a given session."""
     from app.database import SessionLocal
     from app.models.session import SessionModel
+    from app.models.angle_frame import AngleFrame
 
     db = SessionLocal()
     session = None
@@ -49,12 +50,37 @@ def process_video(self, session_id: int):
 
         # Run the CV pipeline
         from main import run_pipeline
-        output_path, report_path = run_pipeline(input_path, session_id=session_id)
+        output_path, report_path, pipeline_data = run_pipeline(input_path, session_id=session_id)
+        print(output_path)
+        print(report_path)
+        if not os.path.exists(output_path):
+            raise FileNotFoundError(f"Output video missing{output_path}")
+        if not os.path.exists(report_path):
+            raise FileNotFoundError(f"Report file missing: {report_path}")
 
-        if not os.path.exists(output_path) or os.path.getsize(output_path) == 0:
-            raise FileNotFoundError(f"Output video missing or empty: {output_path}")
-        if not os.path.exists(report_path) or os.path.getsize(report_path) == 0:
-            raise FileNotFoundError(f"Report file missing or empty: {report_path}")
+        # Bulk insert AngleFrame records
+        shot_angles = pipeline_data.get("shot_angles", [])
+        ball_left_frames = pipeline_data.get("ball_left_frames", [])
+        
+        print(f"DEBUG: shot_angles count: {len(shot_angles)}, ball_left_frames count: {len(ball_left_frames)}")
+        
+        if shot_angles and ball_left_frames:
+            angles_per_shot = []
+            for idx, (frame_num, (elbow_angle, shoulder_angle)) in enumerate(zip(ball_left_frames, shot_angles)):
+                angles_per_shot.append({
+                    "session_id": session_id,
+                    "frame_number": int(frame_num),
+                    "elbow_angle": float(elbow_angle) if elbow_angle is not None else None,
+                    "knee_angle": None,
+                    "shoulder_angle": float(shoulder_angle) if shoulder_angle is not None else None,
+                })
+            
+            if angles_per_shot:
+                db.bulk_insert_mappings(AngleFrame, angles_per_shot)
+                db.commit()
+                print(f"✓ Inserted {len(angles_per_shot)} AngleFrame records for session {session_id}")
+        else:
+            print(f"WARNING: No shot_angles or ball_left_frames to insert")
 
         session.output_path = output_path
         session.report_path = report_path

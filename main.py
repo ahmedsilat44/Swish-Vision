@@ -155,7 +155,7 @@ def main_pipeline(vidname):
     # print(len(video_frames))
 
 
-def run_pipeline(input_path: str, session_id: int = None) -> tuple:
+def run_pipeline(input_path: str, session_id: int = None) -> tuple[str, str, dict]:
     """
     Entry point for the Celery task.
 

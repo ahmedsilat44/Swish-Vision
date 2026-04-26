@@ -54,9 +54,13 @@ def process_video(self, session_id: int):
         print(output_path)
         print(report_path)
         if not os.path.exists(output_path):
-            raise FileNotFoundError(f"Output video missing{output_path}")
+            raise FileNotFoundError(f"Output video missing: {output_path}")
+        if os.path.getsize(output_path) == 0:
+            raise ValueError(f"Output video is empty: {output_path}")
         if not os.path.exists(report_path):
             raise FileNotFoundError(f"Report file missing: {report_path}")
+        if os.path.getsize(report_path) == 0:
+            raise ValueError(f"Report file is empty: {report_path}")
 
         # Bulk insert AngleFrame records
         shot_angles = pipeline_data.get("shot_angles", [])

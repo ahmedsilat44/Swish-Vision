@@ -1,6 +1,9 @@
 import { useState } from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { LoginPage, LogoutButton } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
+import UploadPage from "./pages/UploadPage";
+import SessionDetailPage from "./pages/SessionDetailPage";
 
 // ─── PLACEHOLDER DASHBOARD ────────────────────────────────────────────────────
 function Dashboard({ onLogout, token }) {
@@ -132,9 +135,16 @@ function App() {
     setPage("login");
   };
 
-  // ── Protected: token present ─────────────────────────────────────────────────
+  // ── Protected routes: token present ──────────────────────────────────────────
   if (token) {
-    return <Dashboard onLogout={handleLogout} token={token} />;
+    return (
+      <Routes>
+        <Route path="/" element={<Dashboard onLogout={handleLogout} token={token} />} />
+        <Route path="/upload" element={<UploadPage />} />
+        <Route path="/sessions/:sessionId" element={<SessionDetailPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    );
   }
 
   // ── Public: register ─────────────────────────────────────────────────────────

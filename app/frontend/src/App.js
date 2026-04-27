@@ -1,9 +1,17 @@
 import { useState } from "react";
 import { LoginPage, LogoutButton } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
+import { ShotsTable } from "./pages/ShotsTable";
+
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
 
 // ─── PLACEHOLDER DASHBOARD ────────────────────────────────────────────────────
-function Dashboard({ onLogout, token }) {
+function Dashboard({
+  onLogout,
+  token,
+  onOpenShotsTable,
+  actionStatus,
+}) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
@@ -103,6 +111,37 @@ function Dashboard({ onLogout, token }) {
         </p>
       </div>
 
+      <div
+        style={{
+          width: "100%",
+          maxWidth: "640px",
+          display: "grid",
+          gridTemplateColumns: "1fr",
+          gap: "0.75rem",
+        }}
+      >
+        <button
+          onClick={onOpenShotsTable}
+          style={{
+            padding: "0.85rem 1rem",
+            background: "linear-gradient(135deg, #ff6400, #ff9a00)",
+            border: "none",
+            borderRadius: "10px",
+            color: "#fff",
+            fontWeight: 700,
+            cursor: "pointer",
+          }}
+        >
+          Open Shots Table
+        </button>
+      </div>
+
+      {actionStatus ? (
+        <p style={{ margin: 0, color: "#aaa", fontSize: "0.9rem", maxWidth: "640px", textAlign: "center" }}>
+          {actionStatus}
+        </p>
+      ) : null}
+
       <LogoutButton onLogout={onLogout} />
     </div>
   );
@@ -113,6 +152,16 @@ function App() {
   // Lazy initialiser reads localStorage once on mount — keeps user logged in on refresh
   const [token, setToken] = useState(() => localStorage.getItem("access_token"));
   const [page, setPage] = useState("login"); // "login" | "register"
+  const [dashboardView, setDashboardView] = useState("dashboard"); // "dashboard" | "shots"
+  const [actionStatus, setActionStatus] = useState("");
+
+  const handleAuthError = () => {
+    localStorage.removeItem("access_token");
+    setToken(null);
+    setPage("login");
+    setDashboardView("dashboard");
+    setActionStatus("Session expired. Please log in again.");
+  };
 
   const handleLoginSuccess = (data) => {
     setToken(data.access_token);
@@ -130,11 +179,55 @@ function App() {
   const handleLogout = () => {
     setToken(null);
     setPage("login");
+    setDashboardView("dashboard");
+    setActionStatus("");
+  };
+
+  const handleOpenShotsTable = async () => {
+    setActionStatus("");
+    setDashboardView("shots");
   };
 
   // ── Protected: token present ─────────────────────────────────────────────────
   if (token) {
-    return <Dashboard onLogout={handleLogout} token={token} />;
+    if (dashboardView === "shots") {
+      return (
+        <div
+          style={{
+            minHeight: "100vh",
+            background: "#0a0a0f",
+            color: "#fff",
+            fontFamily: "'DM Sans', sans-serif",
+            padding: "1rem",
+          }}
+        >
+          <button
+            onClick={() => setDashboardView("dashboard")}
+            style={{
+              marginBottom: "1rem",
+              padding: "0.65rem 0.9rem",
+              background: "#1e1e2e",
+              border: "1px solid #333",
+              borderRadius: "8px",
+              color: "#fff",
+              cursor: "pointer",
+            }}
+          >
+            Back to Dashboard
+          </button>
+          <ShotsTable token={token} onAuthError={handleAuthError} />
+        </div>
+      );
+    }
+
+    return (
+      <Dashboard
+        onLogout={handleLogout}
+        token={token}
+        onOpenShotsTable={handleOpenShotsTable}
+        actionStatus={actionStatus}
+      />
+    );
   }
 
   // ── Public: register ─────────────────────────────────────────────────────────

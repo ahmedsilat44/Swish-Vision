@@ -60,6 +60,7 @@ function App() {
         <Routes>
           <Route element={<AppLayout onLogout={handleLogout} />}>
             <Route path="/upload" element={<UploadPage />} />
+            <Route path="/sessions" element={<Navigate to="/upload" replace />} />
             <Route path="/sessions/:id" element={<ResultsPage />} />
             <Route path="*" element={<Navigate to="/upload" replace />} />
           </Route>

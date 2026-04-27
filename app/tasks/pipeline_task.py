@@ -1,9 +1,9 @@
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 import shutil
 import traceback
-from datetime import datetime, timezone
 from celery import Celery
+
 from app.config import settings
 
 celery_app = Celery(
@@ -23,6 +23,19 @@ celery_app.conf.update(
     task_acks_late=True,
     worker_prefetch_multiplier=1,
 )
+
+def _cleanup_transient_files():
+    """Delete intermediate files written during pipeline inference.
+    Safe to call on both success and failure paths.
+    Never deletes uploaded videos or output files."""
+    transient = ["angs.txt", "xy_coords.txt", "detections.txt", "ball_locl.txt"]
+    for fname in transient:
+        if os.path.exists(fname):
+            try:
+                os.remove(fname)
+                print(f"Cleaned up transient file: {fname}")
+            except OSError as e:
+                print(f"Could not delete transient file {fname}: {e}")
 
 
 @celery_app.task(bind=True, max_retries=0)
@@ -106,3 +119,5 @@ def process_video(self, session_id: int):
 
     finally:
         db.close()
+        _cleanup_transient_files()
+

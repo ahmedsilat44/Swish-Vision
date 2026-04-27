@@ -44,6 +44,8 @@ def process_video(self, session_id: int):
     from app.database import SessionLocal
     from app.models.session import SessionModel
     from app.models.angle_frame import AngleFrame
+    from app.models.shot_event import ShotEvent
+    from app.models.report import Report
 
     db = SessionLocal()
     session = None
@@ -75,15 +77,23 @@ def process_video(self, session_id: int):
         if os.path.getsize(report_path) == 0:
             raise ValueError(f"Report file is empty: {report_path}")
 
-        # Bulk insert AngleFrame records
+        # Extract pipeline data
         shot_angles = pipeline_data.get("shot_angles", [])
-        ball_left_frames = pipeline_data.get("ball_left_frames", [])
+        shot_starts = pipeline_data.get("shot_strt", [])
+        shot_ends = pipeline_data.get("shot_end", [])
+        order_shots = pipeline_data.get("order_shots", [])
+        total_shots = pipeline_data.get("total_shots", 0)
+        made_shots = pipeline_data.get("made_shots", 0)
+        missed_shots = pipeline_data.get("missed_shots", 0)
         
-        print(f"DEBUG: shot_angles count: {len(shot_angles)}, ball_left_frames count: {len(ball_left_frames)}")
+        print(f"DEBUG: shot_angles count: {len(shot_angles)}, shot_ends count: {len(shot_ends)}")
+        print(f"DEBUG: total_shots: {total_shots}, made_shots: {made_shots}, missed_shots: {missed_shots}")
         
-        if shot_angles and ball_left_frames:
+        # Bulk insert AngleFrame records
+        
+        if shot_angles and shot_ends:
             angles_per_shot = []
-            for idx, (frame_num, (elbow_angle, shoulder_angle)) in enumerate(zip(ball_left_frames, shot_angles)):
+            for idx, (frame_num, (elbow_angle, shoulder_angle)) in enumerate(zip(shot_starts, shot_angles)):
                 angles_per_shot.append({
                     "session_id": session_id,
                     "frame_number": int(frame_num),
@@ -97,7 +107,52 @@ def process_video(self, session_id: int):
                 db.commit()
                 print(f"✓ Inserted {len(angles_per_shot)} AngleFrame records for session {session_id}")
         else:
-            print(f"WARNING: No shot_angles or ball_left_frames to insert")
+            print(f"WARNING: No shot_angles or shot_ends to insert")
+
+        # Insert Report record
+        report_text = ""
+        if os.path.exists(report_path):
+            try:
+                with open(report_path, "r") as f:
+                    report_text = f.read()
+            except Exception as e:
+                print(f"WARNING: Could not read report file: {e}")
+        
+        report = Report(
+            session_id=session_id,
+            raw_text=report_text,
+            total_shots=total_shots,
+            makes=made_shots,
+            misses=missed_shots,
+        )
+        db.add(report)
+        db.commit()
+        print(f"✓ Inserted Report record for session {session_id}")
+
+        # Bulk insert ShotEvent records
+        shot_events_list = []
+        
+        if shot_starts and shot_ends and shot_angles and order_shots:
+            for shot_num, (start_frame, release_frame, (elbow_angle, shoulder_angle), result) in enumerate(
+                zip(shot_starts, shot_ends, shot_angles, order_shots), 1):
+
+                
+                shot_events_list.append({
+                    "session_id": session_id,
+                    "shot_number": shot_num,
+                    "result": result,  # "make" or "miss"
+                    "start_frame": int(start_frame),
+                    "end_frame": int(release_frame),
+                    "elbow_angle": float(elbow_angle) if isinstance(elbow_angle, (int, float)) else None,
+                    "shoulder_angle": float(shoulder_angle) if shoulder_angle is not None else None,
+                })
+            
+            if shot_events_list:
+                db.bulk_insert_mappings(ShotEvent, shot_events_list)
+                db.commit()
+                print(f"✓ Inserted {len(shot_events_list)} ShotEvent records for session {session_id}")
+        else:
+            print(f"WARNING: Missing data for ShotEvent insert")
 
         session.output_path = output_path
         session.report_path = report_path

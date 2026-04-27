@@ -129,7 +129,7 @@ def main_pipeline(vidname):
     # shot_tracker.detect_shot(three_out_video_frames, ball_tracks, rim_tracks)
 
     print("5")
-    five_out_video_frames = shot_tracker.draw_shots(four_out_video_frames)
+    five_out_video_frames, total_shots, made_shots, missed_shots, order_shots = shot_tracker.draw_shots(four_out_video_frames)
 
     # six_out_video_frames = ball_tracks_drawer.draw_ball_left(five_out_video_frames, ball_left_frames)
 
@@ -140,8 +140,8 @@ def main_pipeline(vidname):
    # write_video(four_out_video_frames, f"output_videos/output_{vidname}_second_angle.avi", fps=fps)
     write_video(five_out_video_frames, f"output_videos/output_{vidname}_processed.avi", fps=fps)
     print("Video saved!")
-
-    return {"shot_angles": shot_angles, "ball_left_frames": ball_left_frames}
+    data = {"shot_angles": shot_angles, "shot_strt": shot_starts, "shot_end": ball_left_frames, "order_shots": order_shots, "total_shots": total_shots, "made_shots": made_shots, "missed_shots": missed_shots}
+    return data
 
 
 

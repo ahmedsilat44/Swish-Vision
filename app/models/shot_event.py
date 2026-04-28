@@ -11,5 +11,5 @@ class ShotEvent(Base):
     result = Column(String(10), nullable=False)  # "make" or "miss"
     start_frame = Column(Integer, nullable=True)
     end_frame = Column(Integer, nullable=True)
-    release_angle = Column(Float, nullable=True)
-    elbow_angle_at_release = Column(Float, nullable=True)
+    elbow_angle = Column(Float, nullable=True)
+    shoulder_angle = Column(Float, nullable=True)

@@ -1,88 +1,72 @@
-import { useState } from "react";
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
-import { LoginPage, LogoutButton } from "./pages/LoginPage";
-import { RegisterPage } from "./pages/RegisterPage";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "./AuthContext";
+import NavBar from "./NavBar";
+import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
+import DashboardPage from "./pages/DashboardPage";
+import { ShotsTable } from "./pages/ShotsTable";
+import SessionsPage from "./pages/SessionsPage";
 import UploadPage from "./pages/UploadPage";
 import ResultsPage from "./pages/ResultsPage";
 
-function AppLayout({ onLogout }) {
+function ProtectedRoute({ children }) {
+  const { token } = useAuth();
+  return token ? children : <Navigate to="/login" replace />;
+}
+
+function AppShell() {
   return (
-    <div>
-      <nav style={navStyle}>
-        <span style={navBrand}>🏀 Swish Vision</span>
-        <LogoutButton onLogout={onLogout} />
-      </nav>
-      <Outlet />
-    </div>
+    <>
+      <NavBar />
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/sessions"
+          element={
+            <ProtectedRoute>
+              <SessionsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/shots"
+          element={
+            <ProtectedRoute>
+              <ShotsTable />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/upload"
+          element={
+            <ProtectedRoute>
+              <UploadPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Routes>
+    </>
   );
 }
 
-const navStyle = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  padding: "0.75rem 1.5rem",
-  background: "#0a0a0f",
-  borderBottom: "1px solid #1e1e2e",
-};
-
-const navBrand = {
-  color: "#fff",
-  fontWeight: "700",
-  fontSize: "1rem",
-  fontFamily: "'DM Sans', sans-serif",
-};
-
 function App() {
-  const [token, setToken] = useState(() => localStorage.getItem("access_token"));
-  const [authPage, setAuthPage] = useState("login"); // "login" | "register"
-
-  const handleLoginSuccess = (data) => {
-    setToken(data.access_token);
-  };
-
-  const handleRegisterSuccess = (data) => {
-    if (data?.access_token) {
-      setToken(data.access_token);
-    } else {
-      setAuthPage("login");
-    }
-  };
-
-  const handleLogout = () => {
-    setToken(null);
-    setAuthPage("login");
-  };
-
-  if (token) {
-    return (
-      <BrowserRouter>
-        <Routes>
-          <Route element={<AppLayout onLogout={handleLogout} />}>
-            <Route path="/upload" element={<UploadPage />} />
-            <Route path="/sessions" element={<Navigate to="/upload" replace />} />
-            <Route path="/sessions/:id" element={<ResultsPage />} />
-            <Route path="*" element={<Navigate to="/upload" replace />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
-    );
-  }
-
-  if (authPage === "register") {
-    return (
-      <RegisterPage
-        onRegisterSuccess={handleRegisterSuccess}
-        onGoToLogin={() => setAuthPage("login")}
-      />
-    );
-  }
-
   return (
-    <LoginPage
-      onLoginSuccess={handleLoginSuccess}
-      onGoToRegister={() => setAuthPage("register")}
-    />
+    <BrowserRouter>
+      <AuthProvider>
+        <AppShell />
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 

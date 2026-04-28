@@ -216,6 +216,17 @@ source .venv/bin/activate  # Linux/macOS
 pip install -r requirements.txt
 ```
 
+### Step 4: Enable Pre-Commit Secret Scanning (Recommended)
+Use pre-commit with detect-secrets to block accidental commits of credentials and tokens.
+
+```bash
+pip install pre-commit
+pre-commit install
+pre-commit run --all-files
+```
+
+The repository includes [.pre-commit-config.yaml](.pre-commit-config.yaml), which runs detect-secrets on staged code files before each commit.
+
 **Key Dependencies:**
 ```
 ultralytics>=8.0.0     # YOLOv8

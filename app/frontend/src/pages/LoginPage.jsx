@@ -2,7 +2,7 @@ import { useState } from "react";
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 // Replace with your actual API base URL (from .env: REACT_APP_API_URL)
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
 
 // ─── STYLES ───────────────────────────────────────────────────────────────────
 const styles = {

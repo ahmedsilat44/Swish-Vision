@@ -244,12 +244,16 @@ class ShotTracker:
                 frame = cv2.putText(frame, f"Made Percentage: {made_percentage:.2f}%", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
             else:
                 if frame_num == self.shots[total_shots]["frame"]:
-                    if self.shots[total_shots]["outcome"] == "make":
+                    outcome = self.shots[total_shots].get("outcome", "miss")
+                    if outcome not in {"make", "miss"}:
+                        outcome = "miss"
+
+                    if outcome == "make":
                         made_shots += 1
-                        order_shots.append(1)
                     else:
                         missed_shots += 1
-                        order_shots.append(0)
+
+                    order_shots.append(outcome)
                     total_shots+= 1
                     made_percentage = (made_shots / total_shots) * 100
                 frame = cv2.putText(frame, f"{made_shots} / {total_shots}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)

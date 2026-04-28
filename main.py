@@ -51,12 +51,23 @@ from drawers.human_tracks_drawer import HumanTracksDrawer
 from utils.ball_hand import ball_hand, shot_started
 import os
 
-def main_pipeline(vidname):
+def main_pipeline(input_path):
+
+    if not input_path:
+        raise ValueError("input_path is required")
+
+    # Backward compatibility: allow passing just a stem and resolve to input_videos/<stem>.mp4.
+    source_video_path = os.path.normpath(input_path)
+    if not os.path.exists(source_video_path):
+        input_stem = os.path.splitext(os.path.basename(source_video_path))[0]
+        source_video_path = os.path.join("input_videos", f"{input_stem}.mp4")
+
+    vidname = os.path.splitext(os.path.basename(source_video_path))[0]
 
 
 
-    print(f"Reading video: input_videos/{vidname}.mp4")
-    video_frames, fps = read_video(f"input_videos/{vidname}.mp4")
+    print(f"Reading video: {source_video_path}")
+    video_frames, fps = read_video(source_video_path)
 
 
     print("ball_tracker = BallTracker(model_path=")
@@ -162,9 +173,7 @@ def run_pipeline(input_path: str, session_id: int = None) -> tuple[str, str, dic
     Parameters
     ----------
     input_path : str
-        Absolute or relative path to the input video that has already been
-        copied into input_videos/.  Only the stem (name without extension) is
-        used to locate the file, so the file must reside in input_videos/.
+        Absolute or relative path to the input video file.
     session_id : int, optional
         Database session ID (unused by the CV pipeline itself, reserved for
         future report-persistence work).
@@ -175,7 +184,7 @@ def run_pipeline(input_path: str, session_id: int = None) -> tuple[str, str, dic
         (output_path, report_path, pipeline_data) – paths and data produced by main_pipeline.
     """
     vidname = os.path.splitext(os.path.basename(input_path))[0]
-    pipeline_data = main_pipeline(vidname)
+    pipeline_data = main_pipeline(input_path)
     output_path = os.path.join("output_videos", f"output_{vidname}_processed.avi")
     report_path = os.path.join("reports", f"{vidname}_report.txt")
     return output_path, report_path, pipeline_data
@@ -185,7 +194,7 @@ def main():
     # main_pipeline("vid14_1")
     # main_pipeline("vid13_1")
     # main_pipeline("vid18")
-    main_pipeline("vid20")
+    main_pipeline(os.path.join("input_videos", "vid20.mp4"))
 
 if __name__ == "__main__":
     main()

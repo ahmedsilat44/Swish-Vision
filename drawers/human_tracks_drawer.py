@@ -352,6 +352,7 @@ class HumanTracksDrawer:
 
 
             shot_angles.append((sew_min, esh_max))
+            os.makedirs("reports", exist_ok=True)
             with open(f"./reports/{file_name}", "a") as f:
                 for item in verdict:
                     f.write(str(item))

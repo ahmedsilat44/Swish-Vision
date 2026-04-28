@@ -125,6 +125,33 @@ def get_angles(session: SessionModel = Depends(verify_session_ownership)):
     # TODO: Query angle_frames and build response
     return {"session_id": session.id, "frames": []}
 
+@router.post("/{session_id}/retry", response_model=SessionResponse)
+def retry_session(
+    session: SessionModel = Depends(verify_session_ownership),
+    db: Session = Depends(get_db),
+):
+    if session.status != "failed":
+        raise HTTPException(
+            status_code=409,
+            detail="Only failed sessions can be retried",
+        )
+
+    session.status = "queued"
+    session.completed_at = None
+    db.commit()
+    db.refresh(session)
+
+    try:
+        process_video.delay(session.id)
+    except Exception as exc:
+        logging.warning("Celery dispatch failed on retry (is Redis running?): %s", exc)
+        session.status = "pending"
+        db.commit()
+        db.refresh(session)
+
+    return session
+
+
 @router.delete("/{session_id}", status_code=204)
 def delete_session(
     session: SessionModel = Depends(verify_session_ownership),

@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 import os
 import shutil
+from sqlalchemy import inspect, text
 from celery import Celery
 from celery.utils.log import get_task_logger
 
@@ -25,6 +26,11 @@ celery_app.conf.update(
 )
 
 logger = get_task_logger(__name__)
+
+
+def _get_table_columns(db, table_name: str) -> set[str]:
+    bind = db.get_bind()
+    return {column["name"] for column in inspect(bind).get_columns(table_name)}
 
 
 def _normalize_shot_result(result) -> str:
@@ -55,17 +61,18 @@ def _cleanup_transient_files():
                 logger.warning("Could not delete transient file %s: %s", fname, e)
 
 
-@celery_app.task(bind=True, max_retries=0)
+@celery_app.task(bind=True, max_retries=2, autoretry_for=(Exception,), retry_backoff=True)
 def process_video(self, session_id: int):
     """Celery task wrapping the CV pipeline for a given session."""
     from app.database import SessionLocal
     from app.models.session import SessionModel
     from app.models.angle_frame import AngleFrame
-    from app.models.shot_event import ShotEvent
-    from app.models.report import Report
+    from app.tasks.report_parser import parse_and_persist
 
     db = SessionLocal()
     session = None
+    input_path = None
+    copied_input_file = False
     try:
         session = db.query(SessionModel).filter(SessionModel.id == session_id).first()
         if not session:
@@ -75,11 +82,25 @@ def process_video(self, session_id: int):
         session.status = "processing"
         db.commit()
 
-        # Copy uploaded video to input_videos/ for pipeline
-        input_dir = "input_videos"
+        source_upload_path = os.path.abspath(session.upload_path or "")
+        if not source_upload_path or not os.path.exists(source_upload_path):
+            raise FileNotFoundError(f"Upload file missing: {session.upload_path}")
+
+        # Copy uploaded video into input_videos only when source is outside input_videos.
+        # This avoids deleting the original upload when handling failures.
+        input_dir = os.path.abspath("input_videos")
         os.makedirs(input_dir, exist_ok=True)
-        input_path = os.path.join(input_dir, os.path.basename(session.upload_path))
-        shutil.copy2(session.upload_path, input_path)
+        source_dir = os.path.dirname(source_upload_path)
+
+        if os.path.normcase(source_dir) == os.path.normcase(input_dir):
+            input_path = source_upload_path
+            logger.debug("Using upload in input_videos directly for session %s: %s", session_id, input_path)
+        else:
+            input_filename = f"session_{session_id}_{os.path.basename(source_upload_path)}"
+            input_path = os.path.join(input_dir, input_filename)
+            shutil.copy2(source_upload_path, input_path)
+            copied_input_file = True
+            logger.debug("Copied upload for processing for session %s: %s -> %s", session_id, source_upload_path, input_path)
 
         # Run the CV pipeline
         from main import run_pipeline
@@ -99,10 +120,6 @@ def process_video(self, session_id: int):
         shot_starts = pipeline_data.get("shot_strt", [])
         shot_ends = pipeline_data.get("shot_end", [])
         order_shots = pipeline_data.get("order_shots", [])
-        total_shots = pipeline_data.get("total_shots", 0)
-        made_shots = pipeline_data.get("made_shots", 0)
-        missed_shots = pipeline_data.get("missed_shots", 0)
-
         logger.debug(
             "Counts for session %s: shot_angles=%s shot_starts=%s shot_ends=%s order_shots=%s",
             session_id,
@@ -110,13 +127,6 @@ def process_video(self, session_id: int):
             len(shot_starts),
             len(shot_ends),
             len(order_shots),
-        )
-        logger.debug(
-            "Summary for session %s: total_shots=%s made_shots=%s missed_shots=%s",
-            session_id,
-            total_shots,
-            made_shots,
-            missed_shots,
         )
         
         # Bulk insert AngleFrame records
@@ -147,60 +157,65 @@ def process_video(self, session_id: int):
         else:
             logger.warning("No shot_angles or shot_starts available for AngleFrame insert (session %s)", session_id)
 
-        # Insert Report record
-        report_text = ""
-        if os.path.exists(report_path):
-            try:
-                with open(report_path, "r", encoding="utf-8") as f:
-                    report_text = f.read()
-            except Exception as e:
-                logger.warning("Could not read report file %s: %s", report_path, e)
-        
-        report = Report(
-            session_id=session_id,
-            raw_text=report_text,
-            total_shots=total_shots,
-            makes=made_shots,
-            misses=missed_shots,
-        )
-        db.add(report)
+        parse_and_persist(session_id=session_id, report_path=report_path, db=db)
+
+        # Keep parser as source-of-truth for rows, then enrich with pipeline-only fields.
+        shot_event_columns = _get_table_columns(db, "shot_events")
+        if not (len(shot_starts) == len(shot_ends) == len(shot_angles) == len(order_shots)):
+            logger.warning(
+                "ShotEvent enrichment length mismatch for session %s: shot_starts=%s shot_ends=%s shot_angles=%s order_shots=%s. Using shortest length.",
+                session_id,
+                len(shot_starts),
+                len(shot_ends),
+                len(shot_angles),
+                len(order_shots),
+            )
+
+        updates_applied = 0
+        for shot_num, start_frame, release_frame, angles, result in zip(
+            range(1, min(len(shot_starts), len(shot_ends), len(shot_angles), len(order_shots)) + 1),
+            shot_starts,
+            shot_ends,
+            shot_angles,
+            order_shots,
+        ):
+            elbow_angle, shoulder_angle = angles
+            set_clauses = []
+            params = {
+                "session_id": session_id,
+                "shot_number": shot_num,
+            }
+
+            if "result" in shot_event_columns:
+                set_clauses.append("result = :result")
+                params["result"] = _normalize_shot_result(result)
+            if "start_frame" in shot_event_columns:
+                set_clauses.append("start_frame = :start_frame")
+                params["start_frame"] = int(start_frame)
+            if "end_frame" in shot_event_columns:
+                set_clauses.append("end_frame = :end_frame")
+                params["end_frame"] = int(release_frame)
+            if "elbow_angle" in shot_event_columns:
+                set_clauses.append("elbow_angle = :elbow_angle")
+                params["elbow_angle"] = float(elbow_angle) if isinstance(elbow_angle, (int, float)) else None
+            if "shoulder_angle" in shot_event_columns:
+                set_clauses.append("shoulder_angle = :shoulder_angle")
+                params["shoulder_angle"] = float(shoulder_angle) if shoulder_angle is not None else None
+
+            if not set_clauses:
+                continue
+
+            db.execute(
+                text(
+                    f"UPDATE shot_events SET {', '.join(set_clauses)} "
+                    "WHERE session_id = :session_id AND shot_number = :shot_number"
+                ),
+                params,
+            )
+            updates_applied += 1
+
         db.commit()
-        logger.info("Inserted Report record for session %s", session_id)
-
-        # Bulk insert ShotEvent records
-        shot_events_list = []
-        
-        if shot_starts and shot_ends and shot_angles and order_shots:
-            if not (len(shot_starts) == len(shot_ends) == len(shot_angles) == len(order_shots)):
-                logger.warning(
-                    "ShotEvent length mismatch for session %s: shot_starts=%s shot_ends=%s shot_angles=%s order_shots=%s. Using shortest length.",
-                    session_id,
-                    len(shot_starts),
-                    len(shot_ends),
-                    len(shot_angles),
-                    len(order_shots),
-                )
-
-            for shot_num, (start_frame, release_frame, (elbow_angle, shoulder_angle), result) in enumerate(
-                zip(shot_starts, shot_ends, shot_angles, order_shots), 1):
-
-                
-                shot_events_list.append({
-                    "session_id": session_id,
-                    "shot_number": shot_num,
-                    "result": _normalize_shot_result(result),
-                    "start_frame": int(start_frame),
-                    "end_frame": int(release_frame),
-                    "elbow_angle": float(elbow_angle) if isinstance(elbow_angle, (int, float)) else None,
-                    "shoulder_angle": float(shoulder_angle) if shoulder_angle is not None else None,
-                })
-            
-            if shot_events_list:
-                db.bulk_insert_mappings(ShotEvent, shot_events_list)
-                db.commit()
-                logger.info("Inserted %s ShotEvent records for session %s", len(shot_events_list), session_id)
-        else:
-            logger.warning("Missing data for ShotEvent insert (session %s)", session_id)
+        logger.info("Enriched %s ShotEvent records for session %s", updates_applied, session_id)
 
         session.output_path = output_path
         session.report_path = report_path
@@ -211,11 +226,12 @@ def process_video(self, session_id: int):
 
     except Exception:
         logger.exception("Exception during video processing for session %s", session_id)
+        db.rollback()
         if session is not None:
             session.status = "failed"
             db.commit()
 
-        if 'input_path' in locals() and os.path.exists(input_path):
+        if copied_input_file and input_path and os.path.exists(input_path):
             logger.debug("Removing copied input file after failure: %s", input_path)
             os.remove(input_path)
 

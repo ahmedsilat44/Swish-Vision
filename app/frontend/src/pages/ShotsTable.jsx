@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../AuthContext";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
 
-export function ShotsTable({ token, onAuthError }) {
+export function ShotsTable() {
+  const { token } = useAuth();
+  const navigate = useNavigate();
   const [sessions, setSessions] = useState([]);
   const [selectedSessionId, setSelectedSessionId] = useState("");
   const [shots, setShotsData] = useState([]);
@@ -20,7 +24,7 @@ export function ShotsTable({ token, onAuthError }) {
         const data = await response.json();
 
         if (response.status === 401) {
-          if (onAuthError) onAuthError();
+          navigate("/login", { replace: true });
           return;
         }
 
@@ -35,7 +39,7 @@ export function ShotsTable({ token, onAuthError }) {
     };
 
     fetchSessions();
-  }, [token, onAuthError]);
+  }, [token, navigate]);
 
   useEffect(() => {
     if (!selectedSessionId) {
@@ -53,7 +57,7 @@ export function ShotsTable({ token, onAuthError }) {
         });
 
         if (response.status === 401) {
-          if (onAuthError) onAuthError();
+          navigate("/login", { replace: true });
           return;
         }
         
@@ -73,7 +77,7 @@ export function ShotsTable({ token, onAuthError }) {
     };
 
     fetchShots();
-  }, [selectedSessionId, token, onAuthError]);
+  }, [selectedSessionId, token, navigate]);
 
   if (loadingSessions) return <div>Loading sessions...</div>;
   if (error) return <div>Error: {error}</div>;

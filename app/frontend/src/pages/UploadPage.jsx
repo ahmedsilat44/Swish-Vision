@@ -1,16 +1,18 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../AuthContext';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
 export default function UploadPage() {
+  const { token } = useAuth();
+  const navigate = useNavigate();
   const [file, setFile] = useState(null);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState('');
   const [status, setStatus] = useState('idle'); // idle | uploading | queued | failed
   const inputRef = useRef();
   const xhrRef = useRef(null);
-  const navigate = useNavigate();
 
   useEffect(() => {
     return () => { xhrRef.current?.abort(); };
@@ -55,7 +57,6 @@ export default function UploadPage() {
     setProgress(0);
     setError('');
 
-    const token = localStorage.getItem('access_token');
     if (!token) {
       setError('You must be logged in to upload');
       setStatus('failed');
@@ -75,10 +76,9 @@ export default function UploadPage() {
 
     xhr.onload = () => {
       if (xhr.status === 201) {
-        const data = JSON.parse(xhr.responseText);
+        JSON.parse(xhr.responseText);
         setStatus('queued');
         setProgress(100);
-        navigate(`/sessions/${data.id}`);
       } else if (xhr.status === 409) {
         setError('Cannot upload while another session is processing');
         setStatus('failed');
@@ -100,7 +100,7 @@ export default function UploadPage() {
 
     xhr.onabort = () => {};
 
-    xhr.open('POST', `${API_URL}/api/sessions/upload`);
+    xhr.open('POST', `${API_URL}/sessions/upload`);
     xhr.setRequestHeader('Authorization', `Bearer ${token}`);
     setStatus('uploading');
     xhr.send(fd);

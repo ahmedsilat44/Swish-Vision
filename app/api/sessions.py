@@ -7,6 +7,7 @@ from app.database import get_db
 from app.config import settings
 from app.models.user import User
 from app.models.session import SessionModel
+from app.models.shot_event import ShotEvent
 from app.schemas.session import SessionResponse, SessionListResponse, ShotAnalyticsResponse, AngleDataResponse
 from app.core.security import get_current_user, get_session_or_403
 from app.tasks.pipeline_task import process_video
@@ -88,9 +89,36 @@ def get_session(session: SessionModel = Depends(verify_session_ownership)):
     return session
 
 @router.get("/{session_id}/shots", response_model=ShotAnalyticsResponse)
-def get_shots(session: SessionModel = Depends(verify_session_ownership)):
-    # TODO: Query shot_events and build response
-    return {"session_id": session.id, "shots": [], "total_shots": 0, "makes": 0, "misses": 0}
+def get_shots(session: SessionModel = Depends(verify_session_ownership), db: Session = Depends(get_db)):
+    shots = db.query(ShotEvent).filter(ShotEvent.session_id == session.id).order_by(ShotEvent.shot_number).all()
+    
+    def normalize_result(result):
+        if result in ("make", "made", "1", 1, True):
+            return "make"
+        if result in ("miss", "missed", "0", 0, False):
+            return "miss"
+        return str(result).strip().lower()
+
+    normalized_shots = [
+        {
+            "shot_number": s.shot_number,
+            "result": normalize_result(s.result),
+            "release_angle": s.shoulder_angle,
+            "elbow_angle_at_release": s.elbow_angle,
+        }
+        for s in shots
+    ]
+
+    makes = sum(1 for s in normalized_shots if s["result"] == "make")
+    misses = len(shots) - makes
+    
+    return {
+        "session_id": session.id,
+        "shots": normalized_shots,
+        "total_shots": len(shots),
+        "makes": makes,
+        "misses": misses,
+    }
 
 @router.get("/{session_id}/angles", response_model=AngleDataResponse)
 def get_angles(
@@ -118,6 +146,33 @@ def get_angles(
     ]
     return {"session_id": session.id, "frames": frames}
 
+@router.post("/{session_id}/retry", response_model=SessionResponse)
+def retry_session(
+    session: SessionModel = Depends(verify_session_ownership),
+    db: Session = Depends(get_db),
+):
+    if session.status != "failed":
+        raise HTTPException(
+            status_code=409,
+            detail="Only failed sessions can be retried",
+        )
+
+    session.status = "queued"
+    session.completed_at = None
+    db.commit()
+    db.refresh(session)
+
+    try:
+        process_video.delay(session.id)
+    except Exception as exc:
+        logging.warning("Celery dispatch failed on retry (is Redis running?): %s", exc)
+        session.status = "pending"
+        db.commit()
+        db.refresh(session)
+
+    return session
+
+
 @router.delete("/{session_id}", status_code=204)
 def delete_session(
     session: SessionModel = Depends(verify_session_ownership),
@@ -140,3 +195,5 @@ def delete_session(
 
     db.delete(session)
     db.commit()
+
+

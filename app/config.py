@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/0"
     SECRET_KEY: str = "change-me-to-a-random-256-bit-secret"
+    ADMIN_RESET_KEY: str = ""
     UPLOAD_DIR: str = "app/uploads"
     OUTPUT_DIR: str = "output_videos"
     MODEL_DIR: str = "models"

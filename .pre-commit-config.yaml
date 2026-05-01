@@ -1,0 +1,23 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-merge-conflict
+
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        exclude: |
+          (?x)^(
+            Basketball-1/|
+            models/|
+            runs/|
+            input_videos/|
+            output_videos/|
+            .*\.pt$|
+            .*\.ipynb$|
+            .*\.(jpg|jpeg|png|mp4|avi)$
+          )

@@ -6,6 +6,7 @@ from app.main import app
 from app.api import sessions as sessions_api
 from app.config import settings
 from app.core.security import create_access_token
+from app.models.session import SessionModel
 from app.models.user import User
 
 
@@ -104,3 +105,68 @@ class TestSessions:
 
         expected_path = tmp_path / f"{body['id']}.mp4"
         assert expected_path.exists()
+
+    def test_delete_session_success_returns_204(self, client, db_session):
+        user = User(name="Delete OK", email="delete-ok@example.com", password_hash="hash")
+        db_session.add(user)
+        db_session.commit()
+        db_session.refresh(user)
+        token = create_access_token({"sub": str(user.id)})
+
+        session = SessionModel(
+            user_id=user.id,
+            original_filename="delete_me.mp4",
+            status="completed",
+        )
+        db_session.add(session)
+        db_session.commit()
+        db_session.refresh(session)
+        session_id = session.id
+
+        res = client.delete(f"/api/sessions/{session_id}", headers={"Authorization": f"Bearer {token}"})
+        assert res.status_code == 204
+
+        db_session.expire_all()
+        found = db_session.query(SessionModel).filter(SessionModel.id == session_id).first()
+        assert found is None
+
+    def test_delete_session_processing_returns_409(self, client, db_session):
+        user = User(name="Delete Busy", email="delete-busy@example.com", password_hash="hash")
+        db_session.add(user)
+        db_session.commit()
+        db_session.refresh(user)
+        token = create_access_token({"sub": str(user.id)})
+
+        session = SessionModel(
+            user_id=user.id,
+            original_filename="busy.mp4",
+            status="processing",
+        )
+        db_session.add(session)
+        db_session.commit()
+        db_session.refresh(session)
+
+        res = client.delete(f"/api/sessions/{session.id}", headers={"Authorization": f"Bearer {token}"})
+        assert res.status_code == 409
+        assert "processed" in res.json().get("detail", "").lower()
+
+    def test_delete_session_other_user_returns_403(self, client, db_session):
+        owner = User(name="Owner", email="owner@example.com", password_hash="hash")
+        intruder = User(name="Intruder", email="intruder@example.com", password_hash="hash")
+        db_session.add_all([owner, intruder])
+        db_session.commit()
+        db_session.refresh(owner)
+        db_session.refresh(intruder)
+
+        intruder_token = create_access_token({"sub": str(intruder.id)})
+        session = SessionModel(
+            user_id=owner.id,
+            original_filename="private.mp4",
+            status="completed",
+        )
+        db_session.add(session)
+        db_session.commit()
+        db_session.refresh(session)
+
+        res = client.delete(f"/api/sessions/{session.id}", headers={"Authorization": f"Bearer {intruder_token}"})
+        assert res.status_code == 403

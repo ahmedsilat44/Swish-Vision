@@ -42,10 +42,12 @@ class ShotAnalyticsResponse(BaseModel):
 
 
 class AngleFrameDetail(BaseModel):
+    shot_number: int
     frame_number: int
     elbow_angle: Optional[float] = None
     knee_angle: Optional[float] = None
     shoulder_angle: Optional[float] = None
+    outcome: Optional[str] = None
 
 
 class AngleDataResponse(BaseModel):

@@ -121,9 +121,30 @@ def get_shots(session: SessionModel = Depends(verify_session_ownership), db: Ses
     }
 
 @router.get("/{session_id}/angles", response_model=AngleDataResponse)
-def get_angles(session: SessionModel = Depends(verify_session_ownership)):
-    # TODO: Query angle_frames and build response
-    return {"session_id": session.id, "frames": []}
+def get_angles(
+    session: SessionModel = Depends(verify_session_ownership),
+    db: Session = Depends(get_db),
+):
+    from app.models.angle_frame import AngleFrame
+
+    rows = (
+        db.query(AngleFrame)
+        .filter(AngleFrame.session_id == session.id)
+        .order_by(AngleFrame.frame_number)
+        .all()
+    )
+    frames = [
+        {
+            "shot_number": idx + 1,
+            "frame_number": row.frame_number,
+            "elbow_angle": row.elbow_angle,
+            "knee_angle": row.knee_angle,
+            "shoulder_angle": row.shoulder_angle,
+            "outcome": None,
+        }
+        for idx, row in enumerate(rows)
+    ]
+    return {"session_id": session.id, "frames": frames}
 
 @router.post("/{session_id}/retry", response_model=SessionResponse)
 def retry_session(

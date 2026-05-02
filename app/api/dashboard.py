@@ -22,31 +22,20 @@ def dashboard_summary(
         .filter(SessionModel.user_id == current_user.id)
         .scalar()
     )
-    completed_session_ids = [
-        row[0]
-        for row in db.query(SessionModel.id)
-        .filter(SessionModel.user_id == current_user.id, SessionModel.status == "completed")
-        .all()
-    ]
-    completed_sessions = len(completed_session_ids)
-
-    if not completed_session_ids:
-        return DashboardSummaryResponse(
-            total_sessions=total_sessions,
-            completed_sessions=0,
-            total_shots=0,
-            total_makes=0,
-            shot_percentage=None,
-        )
-
     agg = (
         db.query(
+            func.count(func.distinct(SessionModel.id)).label("completed_sessions"),
             func.coalesce(func.sum(Report.total_shots), 0).label("total_shots"),
             func.coalesce(func.sum(Report.makes), 0).label("total_makes"),
         )
-        .filter(Report.session_id.in_(completed_session_ids))
+        .outerjoin(Report, Report.session_id == SessionModel.id)
+        .filter(
+            SessionModel.user_id == current_user.id,
+            SessionModel.status == "completed",
+        )
         .one()
     )
+    completed_sessions = int(agg.completed_sessions)
     total_shots = int(agg.total_shots)
     total_makes = int(agg.total_makes)
     shot_percentage = round(total_makes / total_shots * 100, 1) if total_shots > 0 else None

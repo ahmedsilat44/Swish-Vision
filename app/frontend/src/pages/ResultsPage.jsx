@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Doughnut } from 'react-chartjs-2';
+import './ResultsPage.css';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -21,7 +22,7 @@ function apiFetch(path) {
 }
 
 export default function ResultsPage() {
-  const { sessionId } = useParams();
+  const { id: sessionId } = useParams();
   const navigate = useNavigate();
 
   // 'loading' | 'processing' | 'queued' | 'failed' | 'completed'
@@ -52,28 +53,35 @@ export default function ResultsPage() {
         return;
       }
       const session = await res.json();
+      const status = session.status;
+      const inProgressStatuses = new Set(['queued', 'processing', 'pending', 'uploading']);
 
-      if (session.status === 'processing' || session.status === 'queued') {
-        setPageState(session.status);
+      if (inProgressStatuses.has(status)) {
+        clearTimeout(pollTimer.current);
+        setPageState(status === 'queued' ? 'queued' : 'processing');
+        setErrorMsg('');
         pollTimer.current = setTimeout(loadSession, 5000);
         return;
       }
-      if (session.status === 'failed') {
+      if (status === 'failed') {
         setPageState('failed');
         setErrorMsg(session.error_message || 'An unexpected error occurred during processing.');
         return;
       }
-      if (session.status === 'completed') {
+      if (status === 'completed') {
         await loadAnalytics();
         return;
       }
 
-      setPageState('failed');
+      // Continue polling for unknown non-terminal statuses instead of getting stuck on loading.
+      clearTimeout(pollTimer.current);
+      setPageState('processing');
       setErrorMsg(
-        session.status
-          ? `Unexpected session status: ${session.status}.`
-          : 'Unexpected session status received.'
+        status
+          ? `Unknown session status "${status}". Continuing to check for updates...`
+          : 'Unknown session status received. Continuing to check for updates...'
       );
+      pollTimer.current = setTimeout(loadSession, 5000);
     } catch {
       setPageState('failed');
       setErrorMsg('Network error — could not load session.');
@@ -107,12 +115,13 @@ export default function ResultsPage() {
   }
 
   if (pageState === 'processing' || pageState === 'queued') {
+    const processingMessage =
+      errorMsg || 'Your video is being analysed. This page will update automatically.';
+
     return (
       <CenteredCard>
         <div style={s.spinner} />
-        <p style={s.processingText}>
-          Your video is being analysed. This page will update automatically.
-        </p>
+        <p style={s.processingText}>{processingMessage}</p>
       </CenteredCard>
     );
   }
@@ -334,6 +343,7 @@ const s = {
     cursor: 'pointer',
     color: '#555',
     fontSize: '0.875rem',
+    marginTop: '0.75rem',
     alignSelf: 'flex-start',
   },
   muted: {
@@ -341,10 +351,3 @@ const s = {
     margin: 0,
   },
 };
-
-if (typeof document !== 'undefined' && !document.getElementById('swish-spin-style')) {
-  const style = document.createElement('style');
-  style.id = 'swish-spin-style';
-  style.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
-  document.head.appendChild(style);
-}

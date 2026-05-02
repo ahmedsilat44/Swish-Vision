@@ -225,7 +225,6 @@ def process_video(self, session_id: int):
 
         db.commit()
 
-
     except Exception as exc:
         print("ERROR: Exception during video processing:")
         traceback.print_exc()
@@ -233,7 +232,7 @@ def process_video(self, session_id: int):
         db.rollback()
         if session is not None:
             session.status = "failed"
-            session.error_message = str(exc) or "An unexpected error occurred during processing."
+            session.error_message = "Video processing failed. Please try again later."
             db.commit()
 
         if copied_input_file and input_path and os.path.exists(input_path):

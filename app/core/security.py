@@ -30,12 +30,8 @@ def create_access_token(data: dict, expires_minutes: int = 60) -> str:
     return jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
 
 
-def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security_scheme),
-    db: Session = Depends(get_db),
-):
-
-    token = credentials.credentials
+def _user_from_token(token: str, db: Session) -> User:
+    """Decode JWT, enforce revocation checks, and return the authenticated user."""
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
         user_id = payload.get("sub")
@@ -53,6 +49,18 @@ def get_current_user(
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
     return user
+
+
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security_scheme),
+    db: Session = Depends(get_db),
+):
+    return _user_from_token(credentials.credentials, db)
+
+def get_current_user_token(token: str, db: Session) -> User:
+    """Decode a raw JWT string (e.g. from a query parameter) and return the user."""
+    return _user_from_token(token, db)
+
 
 def get_session_or_403(session_id: int, current_user: User, db: Session):
     """Return the session if it exists and belongs to the current user."""

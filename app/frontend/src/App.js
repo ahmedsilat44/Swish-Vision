@@ -7,6 +7,7 @@ import DashboardPage from "./pages/DashboardPage";
 import { ShotsTable } from "./pages/ShotsTable";
 import SessionsPage from "./pages/SessionsPage";
 import UploadPage from "./pages/UploadPage";
+import ResultsPage from "./pages/ResultsPage";
 import SessionDetailPage from "./pages/SessionDetailPage";
 import ResultsPage from "./pages/ResultsPage";
 

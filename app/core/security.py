@@ -30,49 +30,36 @@ def create_access_token(data: dict, expires_minutes: int = 60) -> str:
     return jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
 
 
+def _user_from_token(token: str, db: Session) -> User:
+    """Decode JWT, enforce revocation checks, and return the authenticated user."""
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+        user_id = payload.get("sub")
+        jti = payload.get("jti")
+        if user_id is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        user_id = int(user_id)
+    except (JWTError, ValueError, TypeError):
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    if jti is not None and db.query(RevokedToken).filter(RevokedToken.jti == jti).first():
+        raise HTTPException(status_code=401, detail="Token has been revoked")
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    return user
+
+
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security_scheme),
     db: Session = Depends(get_db),
 ):
-
-    token = credentials.credentials
-    try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
-        user_id = payload.get("sub")
-        jti = payload.get("jti")
-        if user_id is None:
-            raise HTTPException(status_code=401, detail="Invalid token")
-        user_id = int(user_id)
-    except (JWTError, ValueError, TypeError):
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-    if jti is not None and db.query(RevokedToken).filter(RevokedToken.jti == jti).first():
-        raise HTTPException(status_code=401, detail="Token has been revoked")
-
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
-    return user
+    return _user_from_token(credentials.credentials, db)
 
 def get_current_user_token(token: str, db: Session) -> User:
     """Decode a raw JWT string (e.g. from a query parameter) and return the user."""
-    try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
-        user_id = payload.get("sub")
-        jti = payload.get("jti")
-        if user_id is None:
-            raise HTTPException(status_code=401, detail="Invalid token")
-        user_id = int(user_id)
-    except (JWTError, ValueError, TypeError):
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-    if jti is not None and db.query(RevokedToken).filter(RevokedToken.jti == jti).first():
-        raise HTTPException(status_code=401, detail="Token has been revoked")
-
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
-    return user
+    return _user_from_token(token, db)
 
 
 def get_session_or_403(session_id: int, current_user: User, db: Session):

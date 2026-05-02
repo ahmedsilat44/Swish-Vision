@@ -37,6 +37,47 @@ class TestSessions:
         res = client.get("/api/sessions/9999", headers={"Authorization": f"Bearer {token}"})
         assert res.status_code == 404
 
+    def test_get_session_failed_includes_error_message(self, client, db_session):
+        user = User(name="Failed Session User", email="failed-session@example.com", password_hash="hash")
+        db_session.add(user)
+        db_session.commit()
+        db_session.refresh(user)
+        token = create_access_token({"sub": str(user.id)})
+
+        session = SessionModel(
+            user_id=user.id,
+            original_filename="failed.mp4",
+            status="failed",
+            error_message="Model inference timeout",
+        )
+        db_session.add(session)
+        db_session.commit()
+        db_session.refresh(session)
+
+        res = client.get(f"/api/sessions/{session.id}", headers={"Authorization": f"Bearer {token}"})
+        assert res.status_code == 200
+        assert res.json()["error_message"] == "Model inference timeout"
+
+    def test_get_session_non_failed_returns_null_error_message(self, client, db_session):
+        user = User(name="Queued Session User", email="queued-session@example.com", password_hash="hash")
+        db_session.add(user)
+        db_session.commit()
+        db_session.refresh(user)
+        token = create_access_token({"sub": str(user.id)})
+
+        session = SessionModel(
+            user_id=user.id,
+            original_filename="queued.mp4",
+            status="queued",
+        )
+        db_session.add(session)
+        db_session.commit()
+        db_session.refresh(session)
+
+        res = client.get(f"/api/sessions/{session.id}", headers={"Authorization": f"Bearer {token}"})
+        assert res.status_code == 200
+        assert res.json()["error_message"] is None
+
     def test_uploads_not_served_as_static_route(self, client):
         res = client.get("/uploads/any_file.mp4")
         assert res.status_code == 404

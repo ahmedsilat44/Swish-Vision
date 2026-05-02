@@ -1,7 +1,7 @@
 """add elbow_angle and shoulder_angle to shot_events
 
 Revision ID: 20260428_add_shot_event_angles
-Revises: 20260405_initial_schema
+Revises: 20260425_add_error_message
 Create Date: 2026-04-28 00:00:00.000000
 """
 
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = "20260428_add_shot_event_angles"
-down_revision = "20260405_initial_schema"
+down_revision = "20260425_add_error_message"
 branch_labels = None
 depends_on = None
 

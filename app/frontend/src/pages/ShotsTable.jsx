@@ -157,8 +157,13 @@ export function ShotsTable() {
               {shots.map((shot) => (
                 <tr key={shot.shot_number} style={{ borderBottom: "1px solid #1e1e2e" }}>
                   <td style={{ padding: "0.75rem" }}>{shot.shot_number}</td>
-                  <td style={{ padding: "0.75rem", color: shot.result === "make" ? "#4ade80" : "#ff6b6b" }}>
-                    {shot.result.toUpperCase()}
+                  <td
+                    style={{
+                      padding: "0.75rem",
+                      color: (shot.outcome || shot.result) === "made" || shot.result === "make" ? "#4ade80" : "#ff6b6b",
+                    }}
+                  >
+                    {(shot.outcome || (shot.result === "make" ? "made" : shot.result === "miss" ? "missed" : "missed")).toUpperCase()}
                   </td>
                   <td style={{ padding: "0.75rem" }}>
                     {shot.elbow_angle_at_release?.toFixed(1) || "—"}

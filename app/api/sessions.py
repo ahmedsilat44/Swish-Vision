@@ -14,10 +14,8 @@ from app.schemas.session import (
     SessionResponse,
     SessionListResponse,
     ReportResponse,
-    ShotEventResponse,
-    AngleFrameResponse,
     ShotAnalyticsResponse,
-    AngleDataResponse
+    AngleDataResponse,
 )
 from app.core.security import get_current_user, get_session_or_403
 from app.tasks.pipeline_task import process_video
@@ -120,9 +118,11 @@ def get_report(
         .scalar()
     )
     return ReportResponse(
+        session_id=session.id,
         shot_percentage=round(makes / total * 100, 1) if total > 0 else None,
         shots_made=makes,
         shots_missed=report.misses or 0,
+        total_shots=total,
         avg_release_angle=round(avg_angle, 1) if avg_angle is not None else None,
         feedback_text=report.raw_text,
     )
@@ -133,22 +133,22 @@ def get_shots(session: SessionModel = Depends(verify_session_ownership), db: Ses
     
     def normalize_result(result):
         if result in ("make", "made", "1", 1, True):
-            return "make"
+            return "made"
         if result in ("miss", "missed", "0", 0, False):
-            return "miss"
-        return str(result).strip().lower()
+            return "missed"
+        return "missed"
 
     normalized_shots = [
         {
             "shot_number": s.shot_number,
-            "result": normalize_result(s.result),
+            "outcome": normalize_result(s.result),
             "release_angle": s.shoulder_angle,
             "elbow_angle_at_release": s.elbow_angle,
         }
         for s in shots
     ]
 
-    makes = sum(1 for s in normalized_shots if s["result"] == "make")
+    makes = sum(1 for s in normalized_shots if s["outcome"] == "made")
     misses = len(shots) - makes
     
     return {

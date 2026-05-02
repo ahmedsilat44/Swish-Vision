@@ -1,4 +1,4 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     ENV: str = "development"  # development | staging | production
@@ -33,7 +33,7 @@ class Settings(BaseSettings):
             )
         return f"mssql+pyodbc:///?odbc_connect={params}"
 
-    class Config:
-        env_file = ".env"
+    # Ignore extra environment variables (tests / dev envs may set additional keys)
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 settings = Settings()

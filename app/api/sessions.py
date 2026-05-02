@@ -69,7 +69,6 @@ async def upload_video(
     db.commit()
     db.refresh(session)
 
-    from app.tasks.pipeline_task import process_video
     try:
         process_video.delay(session.id)
     except Exception as exc:

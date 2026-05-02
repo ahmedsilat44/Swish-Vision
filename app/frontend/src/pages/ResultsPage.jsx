@@ -141,6 +141,8 @@ export default function ResultsPage() {
   }
 
   // completed
+  const token = localStorage.getItem('access_token') || '';
+  const videoSrc = `${API_URL}/api/sessions/${sessionId}/output_video?token=${encodeURIComponent(token)}`;
   const shotPercentage = Number.isFinite(report?.shot_percentage) ? report.shot_percentage : 0;
   const shotsMade = Number(report?.shots_made) || 0;
   const shotsMissed = Number(report?.shots_missed) || 0;
@@ -213,6 +215,14 @@ export default function ResultsPage() {
             </table>
           </div>
         )}
+      </div>
+
+      {/* Annotated video player */}
+      <div style={s.card}>
+        <h3 style={s.cardTitle}>Annotated Video</h3>
+        <video controls width="100%" preload="metadata" style={s.video} src={videoSrc}>
+          Your browser does not support HTML5 video.
+        </video>
       </div>
 
       <button style={s.backBtn} onClick={() => navigate('/upload')}>
@@ -345,6 +355,11 @@ const s = {
     fontSize: '0.875rem',
     marginTop: '0.75rem',
     alignSelf: 'flex-start',
+  },
+  video: {
+    borderRadius: 8,
+    background: '#000',
+    display: 'block',
   },
   muted: {
     color: '#888',

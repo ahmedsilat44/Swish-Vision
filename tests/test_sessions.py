@@ -6,7 +6,10 @@ from app.main import app
 from app.api import sessions as sessions_api
 from app.config import settings
 from app.core.security import create_access_token
+from app.models.angle_frame import AngleFrame
+from app.models.report import Report
 from app.models.session import SessionModel
+from app.models.shot_event import ShotEvent
 from app.models.user import User
 
 
@@ -170,3 +173,96 @@ class TestSessions:
 
         res = client.delete(f"/api/sessions/{session.id}", headers={"Authorization": f"Bearer {intruder_token}"})
         assert res.status_code == 403
+
+    def test_get_report_returns_404_when_missing(self, client, db_session):
+        user = User(name="Report Missing", email="report-missing@example.com", password_hash="hash")
+        db_session.add(user)
+        db_session.commit()
+        db_session.refresh(user)
+        token = create_access_token({"sub": str(user.id)})
+
+        session = SessionModel(user_id=user.id, original_filename="no_report.mp4", status="completed")
+        db_session.add(session)
+        db_session.commit()
+        db_session.refresh(session)
+
+        res = client.get(f"/api/sessions/{session.id}/report", headers={"Authorization": f"Bearer {token}"})
+        assert res.status_code == 404
+        assert "not available" in res.json().get("detail", "").lower()
+
+    def test_get_report_calculates_percentage_and_avg_angle(self, client, db_session):
+        user = User(name="Report Math", email="report-math@example.com", password_hash="hash")
+        db_session.add(user)
+        db_session.commit()
+        db_session.refresh(user)
+        token = create_access_token({"sub": str(user.id)})
+
+        session = SessionModel(user_id=user.id, original_filename="math.mp4", status="completed")
+        db_session.add(session)
+        db_session.commit()
+        db_session.refresh(session)
+
+        report = Report(
+            session_id=session.id,
+            total_shots=3,
+            makes=2,
+            misses=1,
+            raw_text="solid form",
+        )
+        db_session.add(report)
+        db_session.add_all(
+            [
+                ShotEvent(session_id=session.id, shot_number=1, result="make", shoulder_angle=45.0),
+                ShotEvent(session_id=session.id, shot_number=2, result="miss", shoulder_angle=49.0),
+                ShotEvent(session_id=session.id, shot_number=3, result="make", shoulder_angle=None),
+            ]
+        )
+        db_session.commit()
+
+        res = client.get(f"/api/sessions/{session.id}/report", headers={"Authorization": f"Bearer {token}"})
+        assert res.status_code == 200
+
+        body = res.json()
+        assert body["shot_percentage"] == 66.7
+        assert body["shots_made"] == 2
+        assert body["shots_missed"] == 1
+        assert body["avg_release_angle"] == 47.0
+        assert body["feedback_text"] == "solid form"
+
+    def test_get_shots_and_angles_are_ordered(self, client, db_session):
+        user = User(name="Ordered Data", email="ordered-data@example.com", password_hash="hash")
+        db_session.add(user)
+        db_session.commit()
+        db_session.refresh(user)
+        token = create_access_token({"sub": str(user.id)})
+
+        session = SessionModel(user_id=user.id, original_filename="ordered.mp4", status="completed")
+        db_session.add(session)
+        db_session.commit()
+        db_session.refresh(session)
+
+        db_session.add_all(
+            [
+                ShotEvent(session_id=session.id, shot_number=3, result="miss", shoulder_angle=52.0, elbow_angle=101.0),
+                ShotEvent(session_id=session.id, shot_number=1, result="make", shoulder_angle=47.0, elbow_angle=95.0),
+                ShotEvent(session_id=session.id, shot_number=2, result="make", shoulder_angle=49.0, elbow_angle=97.0),
+            ]
+        )
+        db_session.add_all(
+            [
+                AngleFrame(session_id=session.id, frame_number=30, elbow_angle=90.0, knee_angle=120.0, shoulder_angle=40.0),
+                AngleFrame(session_id=session.id, frame_number=10, elbow_angle=88.0, knee_angle=118.0, shoulder_angle=38.0),
+                AngleFrame(session_id=session.id, frame_number=20, elbow_angle=89.0, knee_angle=119.0, shoulder_angle=39.0),
+            ]
+        )
+        db_session.commit()
+
+        shots_res = client.get(f"/api/sessions/{session.id}/shots", headers={"Authorization": f"Bearer {token}"})
+        assert shots_res.status_code == 200
+        shots_body = shots_res.json()
+        assert [s["shot_number"] for s in shots_body["shots"]] == [1, 2, 3]
+
+        angles_res = client.get(f"/api/sessions/{session.id}/angles", headers={"Authorization": f"Bearer {token}"})
+        assert angles_res.status_code == 200
+        angles_body = angles_res.json()
+        assert [f["frame_number"] for f in angles_body["frames"]] == [10, 20, 30]

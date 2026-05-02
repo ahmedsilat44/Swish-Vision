@@ -63,8 +63,8 @@ def upgrade() -> None:
         sa.Column("result", sa.String(length=10), nullable=False),
         sa.Column("start_frame", sa.Integer(), nullable=True),
         sa.Column("end_frame", sa.Integer(), nullable=True),
-        sa.Column("release_angle", sa.Float(), nullable=True),
-        sa.Column("elbow_angle_at_release", sa.Float(), nullable=True),
+        sa.Column("elbow_angle", sa.Float(), nullable=True),
+        sa.Column("shoulder_angle", sa.Float(), nullable=True),
         sa.ForeignKeyConstraint(["session_id"], ["sessions.id"]),
     )
     op.create_index(op.f("ix_shot_events_session_id"), "shot_events", ["session_id"], unique=False)

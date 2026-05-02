@@ -159,7 +159,7 @@ def get_output_video(
     mime_type, _ = mimetypes.guess_type(session.output_path)
     return FileResponse(
         path=session.output_path,
-        media_type=mime_type or "video/octet-stream",
+        media_type=mime_type or "application/octet-stream",
         filename=os.path.basename(session.output_path),
     )
 

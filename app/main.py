@@ -23,6 +23,7 @@ setup_middleware(app)
 
 # API routes
 app.include_router(auth.router)
+app.include_router(auth.auth_router)
 app.include_router(sessions.router)
 app.include_router(dashboard.router)
 

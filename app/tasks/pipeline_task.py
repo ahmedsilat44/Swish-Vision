@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 import os
 import shutil
+import traceback
 from sqlalchemy import inspect, text
 from celery import Celery
 from celery.utils.log import get_task_logger
@@ -36,9 +37,9 @@ def _get_table_columns(db, table_name: str) -> set[str]:
 def _normalize_shot_result(result) -> str:
     if isinstance(result, str):
         lowered = result.strip().lower()
-        if lowered in {"make", "1", "true"}:
+        if lowered in {"make", "made", "1", "true"}:
             return "make"
-        if lowered in {"miss", "0", "false"}:
+        if lowered in {"miss", "missed", "0", "false"}:
             return "miss"
     if isinstance(result, bool):
         return "make" if result else "miss"

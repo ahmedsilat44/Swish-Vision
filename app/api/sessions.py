@@ -115,8 +115,8 @@ def get_report(
     total = report.total_shots or 0
     makes = report.makes or 0
     avg_angle = (
-        db.query(func.avg(ShotEvent.release_angle))
-        .filter(ShotEvent.session_id == session.id, ShotEvent.release_angle.isnot(None))
+        db.query(func.avg(ShotEvent.shoulder_angle))
+        .filter(ShotEvent.session_id == session.id, ShotEvent.shoulder_angle.isnot(None))
         .scalar()
     )
     return ReportResponse(

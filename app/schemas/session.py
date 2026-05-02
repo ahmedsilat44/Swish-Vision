@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from typing import Optional
 
@@ -43,11 +43,14 @@ class ShotAnalyticsResponse(BaseModel):
 
 
 class ReportResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     session_id: int
-    shot_percentage: float
-    shots_made: int
-    shots_missed: int
-    total_shots: int
+    shot_percentage: Optional[float] = None
+    shots_made: int = 0
+    shots_missed: int = 0
+    total_shots: int = 0
+    avg_release_angle: Optional[float] = None
+    feedback_text: Optional[str] = None
 
 
 class AngleFrameDetail(BaseModel):
@@ -65,15 +68,6 @@ class AngleDataResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     session_id: int
     frames: list[AngleFrameDetail]
-
-
-class ReportResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
-    shot_percentage: Optional[float] = None
-    makes: int = Field(0, alias="shots_made")
-    misses: int = Field(0, alias="shots_missed")
-    avg_release_angle: Optional[float] = None
-    feedback_text: Optional[str] = None
 
 
 class ShotEventResponse(ShotDetail):

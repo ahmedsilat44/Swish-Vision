@@ -2,7 +2,6 @@ from fastapi import APIRouter, HTTPException, Depends, Header
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import func
 from jose import jwt, JWTError
 from datetime import datetime, timezone
 from typing import Optional
@@ -16,6 +15,7 @@ from app.config import settings
 import re
 
 router = APIRouter(prefix="/api", tags=["auth"])
+auth_router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
 def validate_password_strength(password: str) -> bool:
@@ -23,7 +23,7 @@ def validate_password_strength(password: str) -> bool:
 
 
 def normalize_email(email: str) -> str:
-    return email.strip().lower()
+    return email.strip()
 
 
 def require_admin_reset_key(
@@ -38,11 +38,12 @@ def require_admin_reset_key(
 
 
 @router.post("/register", response_model=TokenResponse, status_code=201)
+@auth_router.post("/register", response_model=TokenResponse, status_code=201)
 def register(payload: RegisterRequest, db: Session = Depends(get_db)):
     email = normalize_email(payload.email)
     if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
         raise HTTPException(status_code=422, detail="Invalid email format")
-    if db.query(User).filter(func.lower(User.email) == email).first():
+    if db.query(User).filter(User.email == email).first():
         raise HTTPException(status_code=409, detail="Email already registered")
     if not validate_password_strength(payload.password):
         raise HTTPException(status_code=422, detail="Password too weak")
@@ -57,9 +58,10 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=TokenResponse)
+@auth_router.post("/login", response_model=TokenResponse)
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
     email = normalize_email(payload.email)
-    user = db.query(User).filter(func.lower(User.email) == email).first()
+    user = db.query(User).filter(User.email == email).first()
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
@@ -68,9 +70,10 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/reset-password")
+@auth_router.post("/reset-password")
 def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db)):
     email = normalize_email(payload.email)
-    user = db.query(User).filter(func.lower(User.email) == email).first()
+    user = db.query(User).filter(User.email == email).first()
     if not user or not verify_password(payload.current_password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
@@ -87,13 +90,14 @@ def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db))
 
 
 @router.post("/admin/force-reset-password")
+@auth_router.post("/admin/force-reset-password")
 def admin_force_reset_password(
     payload: AdminForceResetPasswordRequest,
     _admin_ok: None = Depends(require_admin_reset_key),
     db: Session = Depends(get_db),
 ):
     email = normalize_email(payload.email)
-    user = db.query(User).filter(func.lower(User.email) == email).first()
+    user = db.query(User).filter(User.email == email).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -109,6 +113,7 @@ def admin_force_reset_password(
 
 
 @router.post("/logout")
+@auth_router.post("/logout")
 def logout(
     credentials: HTTPAuthorizationCredentials = Depends(security_scheme),
     db: Session = Depends(get_db),

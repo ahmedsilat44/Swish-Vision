@@ -1,8 +1,7 @@
-import { useState } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./AuthContext";
 import NavBar from "./NavBar";
-import { LoginPage, LogoutButton } from "./pages/LoginPage";
+import { LoginPage } from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import DashboardPage from "./pages/DashboardPage";
 import { ShotsTable } from "./pages/ShotsTable";
@@ -40,10 +39,18 @@ function AppShell() {
           }
         />
         <Route
-          path="/results"
+          path="/results/:sessionId"
           element={
             <ProtectedRoute>
               <ResultsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/sessions/:sessionId"
+          element={
+            <ProtectedRoute>
+              <SessionDetailPage />
             </ProtectedRoute>
           }
         />
@@ -71,55 +78,10 @@ function AppShell() {
 }
 
 function App() {
-  const [token, setToken] = useState(() => localStorage.getItem("access_token"));
-  const [authPage, setAuthPage] = useState("login"); // "login" | "register"
-
-  const handleLoginSuccess = (data) => {
-    setToken(data.access_token);
-  };
-
-  const handleRegisterSuccess = (data) => {
-    if (data?.access_token) {
-      setToken(data.access_token);
-    } else {
-      setAuthPage("login");
-    }
-  };
-
-  const handleLogout = () => {
-    setToken(null);
-    setAuthPage("login");
-  };
-
-  // ── Protected routes: token present ──────────────────────────────────────────
-  if (token) {
-    return (
-      <Routes>
-        <Route path="/" element={<Dashboard onLogout={handleLogout} token={token} />} />
-        <Route path="/upload" element={<UploadPage />} />
-        <Route path="/sessions/:sessionId" element={<SessionDetailPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    );
-  }
-
-  if (authPage === "register") {
-    return (
-      <RegisterPage
-        onRegisterSuccess={handleRegisterSuccess}
-        onGoToLogin={() => setAuthPage("login")}
-      />
-    );
-  }
-
-  // ── Default: login (unauthenticated users always land here) ──────────────────
-
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <AppShell />
-      </AuthProvider>
-    </BrowserRouter>
+    <AuthProvider>
+      <AppShell />
+    </AuthProvider>
   );
 }
 

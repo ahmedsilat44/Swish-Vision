@@ -21,7 +21,7 @@ function apiFetch(path) {
 }
 
 export default function ResultsPage() {
-  const { id: sessionId } = useParams();
+  const { sessionId } = useParams();
   const navigate = useNavigate();
 
   // 'loading' | 'processing' | 'queued' | 'failed' | 'completed'
@@ -38,6 +38,12 @@ export default function ResultsPage() {
   }, [sessionId]);
 
   async function loadSession() {
+    if (!sessionId) {
+      setPageState('failed');
+      setErrorMsg('Invalid session ID.');
+      return;
+    }
+
     try {
       const res = await apiFetch(`/api/sessions/${sessionId}`);
       if (!res.ok) {
@@ -126,11 +132,16 @@ export default function ResultsPage() {
   }
 
   // completed
+  const shotPercentage = Number.isFinite(report?.shot_percentage) ? report.shot_percentage : 0;
+  const shotsMade = Number(report?.shots_made) || 0;
+  const shotsMissed = Number(report?.shots_missed) || 0;
+  const totalShots = Number(report?.total_shots) || shots.length;
+
   const doughnutData = {
     labels: ['Made', 'Missed'],
     datasets: [
       {
-        data: [report.shots_made, report.shots_missed],
+        data: [shotsMade, shotsMissed],
         backgroundColor: ['#22c55e', '#ef4444'],
         borderWidth: 0,
       },
@@ -142,9 +153,9 @@ export default function ResultsPage() {
       {/* Hero stat */}
       <div style={s.heroCard}>
         <p style={s.heroLabel}>Shot Percentage</p>
-        <p style={s.heroStat}>{report.shot_percentage.toFixed(1)}%</p>
+        <p style={s.heroStat}>{shotPercentage.toFixed(1)}%</p>
         <p style={s.heroSub}>
-          {report.shots_made} made · {report.shots_missed} missed · {report.total_shots} total
+          {shotsMade} made · {shotsMissed} missed · {totalShots} total
         </p>
       </div>
 
@@ -176,16 +187,19 @@ export default function ResultsPage() {
                 </tr>
               </thead>
               <tbody>
-                {shots.map((shot) => (
-                  <tr key={shot.shot_number}>
-                    <td style={s.td}>{shot.shot_number}</td>
-                    <td style={{ ...s.td, color: shot.outcome === 'made' ? '#22c55e' : '#ef4444', fontWeight: 600 }}>
-                      {shot.outcome}
-                    </td>
-                    <td style={s.td}>{shot.release_angle != null ? `${shot.release_angle.toFixed(1)}°` : '—'}</td>
-                    <td style={s.td}>{shot.elbow_angle_at_release != null ? `${shot.elbow_angle_at_release.toFixed(1)}°` : '—'}</td>
-                  </tr>
-                ))}
+                {shots.map((shot) => {
+                  const outcome = shot.outcome || (shot.result === 'make' ? 'made' : shot.result === 'miss' ? 'missed' : 'missed');
+                  return (
+                    <tr key={shot.shot_number}>
+                      <td style={s.td}>{shot.shot_number}</td>
+                      <td style={{ ...s.td, color: outcome === 'made' ? '#22c55e' : '#ef4444', fontWeight: 600 }}>
+                        {outcome}
+                      </td>
+                      <td style={s.td}>{shot.release_angle != null ? `${shot.release_angle.toFixed(1)}°` : '—'}</td>
+                      <td style={s.td}>{shot.elbow_angle_at_release != null ? `${shot.elbow_angle_at_release.toFixed(1)}°` : '—'}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

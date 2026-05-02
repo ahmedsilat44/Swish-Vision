@@ -113,14 +113,15 @@ def get_report(
     if not report:
         raise HTTPException(status_code=404, detail="Report not available yet. Session may still be processing.")
     total = report.total_shots or 0
+    makes = report.makes or 0
     avg_angle = (
         db.query(func.avg(ShotEvent.release_angle))
         .filter(ShotEvent.session_id == session.id, ShotEvent.release_angle.isnot(None))
         .scalar()
     )
     return ReportResponse(
-        shot_percentage=round(report.makes / total * 100, 1) if total > 0 else None,
-        shots_made=report.makes or 0,
+        shot_percentage=round(makes / total * 100, 1) if total > 0 else None,
+        shots_made=makes,
         shots_missed=report.misses or 0,
         avg_release_angle=round(avg_angle, 1) if avg_angle is not None else None,
         feedback_text=report.raw_text,

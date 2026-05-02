@@ -51,12 +51,23 @@ from drawers.human_tracks_drawer import HumanTracksDrawer
 from utils.ball_hand import ball_hand, shot_started
 import os
 
-def main_pipeline(vidname):
+def main_pipeline(input_path):
+
+    if not input_path:
+        raise ValueError("input_path is required")
+
+    # Backward compatibility: allow passing just a stem and resolve to input_videos/<stem>.mp4.
+    source_video_path = os.path.normpath(input_path)
+    if not os.path.exists(source_video_path):
+        input_stem = os.path.splitext(os.path.basename(source_video_path))[0]
+        source_video_path = os.path.join("input_videos", f"{input_stem}.mp4")
+
+    vidname = os.path.splitext(os.path.basename(source_video_path))[0]
 
 
 
-    print(f"Reading video: input_videos/{vidname}.mp4")
-    video_frames, fps = read_video(f"input_videos/{vidname}.mp4")
+    print(f"Reading video: {source_video_path}")
+    video_frames, fps = read_video(source_video_path)
 
 
     print("ball_tracker = BallTracker(model_path=")
@@ -117,7 +128,7 @@ def main_pipeline(vidname):
     human_tracks_drawer = HumanTracksDrawer()
     print("3")
     three_out_video_frames = human_tracks_drawer.draw(video_frames, human_tracks, angles, draw_boxes=False, draw_keypoints=True)
-    four_out_video_frames = human_tracks_drawer.analysis(three_out_video_frames, angles, ball_left_frames, shot_starts, f"{vidname}_report.txt")
+    four_out_video_frames, shot_angles = human_tracks_drawer.analysis(three_out_video_frames, angles, ball_left_frames, shot_starts, f"{vidname}_report.txt")
 
 
 
@@ -129,7 +140,7 @@ def main_pipeline(vidname):
     # shot_tracker.detect_shot(three_out_video_frames, ball_tracks, rim_tracks)
 
     print("5")
-    five_out_video_frames = shot_tracker.draw_shots(four_out_video_frames)
+    five_out_video_frames, total_shots, made_shots, missed_shots, order_shots = shot_tracker.draw_shots(four_out_video_frames)
 
     # six_out_video_frames = ball_tracks_drawer.draw_ball_left(five_out_video_frames, ball_left_frames)
 
@@ -139,6 +150,11 @@ def main_pipeline(vidname):
 
    # write_video(four_out_video_frames, f"output_videos/output_{vidname}_second_angle.avi", fps=fps)
     write_video(five_out_video_frames, f"output_videos/output_{vidname}_processed.avi", fps=fps)
+    print("Video saved!")
+    data = {"shot_angles": shot_angles, "shot_strt": shot_starts, "shot_end": ball_left_frames, "order_shots": order_shots, "total_shots": total_shots, "made_shots": made_shots, "missed_shots": missed_shots}
+    return data
+
+
 
     ##if using this dont forget to change in vid_utils.py the fourcc to mp4v
     # write_video(four_out_video_frames, f"output_videos/output_{vidname}.mp4", fps=fps)
@@ -150,37 +166,35 @@ def main_pipeline(vidname):
     # print(len(video_frames))
 
 
-def run_pipeline(input_path: str, session_id: int = None) -> tuple:
+def run_pipeline(input_path: str, session_id: int = None) -> tuple[str, str, dict]:
     """
     Entry point for the Celery task.
 
     Parameters
     ----------
     input_path : str
-        Absolute or relative path to the input video that has already been
-        copied into input_videos/.  Only the stem (name without extension) is
-        used to locate the file, so the file must reside in input_videos/.
+        Absolute or relative path to the input video file.
     session_id : int, optional
         Database session ID (unused by the CV pipeline itself, reserved for
         future report-persistence work).
 
     Returns
     -------
-    tuple[str, str]
-        (output_path, report_path) – paths produced by main_pipeline.
+    tuple[str, str, dict]
+        (output_path, report_path, pipeline_data) – paths and data produced by main_pipeline.
     """
     vidname = os.path.splitext(os.path.basename(input_path))[0]
-    main_pipeline(vidname)
-    output_path = os.path.join("output_videos", f"output_{vidname}_processed.avi.avi")
-    report_path = f"{vidname}_report.txt"
-    return output_path, report_path
+    pipeline_data = main_pipeline(input_path)
+    output_path = os.path.join("output_videos", f"output_{vidname}_processed.avi")
+    report_path = os.path.join("reports", f"{vidname}_report.txt")
+    return output_path, report_path, pipeline_data
 
 
 def main():
     # main_pipeline("vid14_1")
     # main_pipeline("vid13_1")
-    main_pipeline("vid18")
-    main_pipeline("vid20")
+    # main_pipeline("vid18")
+    main_pipeline(os.path.join("input_videos", "vid20.mp4"))
 
 if __name__ == "__main__":
     main()

@@ -54,27 +54,6 @@ def get_current_user(
         raise HTTPException(status_code=401, detail="User not found")
     return user
 
-def get_current_user_token(token: str, db: Session) -> User:
-    """Decode a raw JWT string (e.g. from a query parameter) and return the user."""
-    try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
-        user_id = payload.get("sub")
-        jti = payload.get("jti")
-        if user_id is None:
-            raise HTTPException(status_code=401, detail="Invalid token")
-        user_id = int(user_id)
-    except (JWTError, ValueError, TypeError):
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-    if jti is not None and db.query(RevokedToken).filter(RevokedToken.jti == jti).first():
-        raise HTTPException(status_code=401, detail="Token has been revoked")
-
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
-    return user
-
-
 def get_session_or_403(session_id: int, current_user: User, db: Session):
     """Return the session if it exists and belongs to the current user."""
     session = db.query(SessionModel).filter(

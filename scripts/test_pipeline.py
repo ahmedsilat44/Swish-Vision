@@ -10,11 +10,11 @@ import requests
 import time
 import sys
 
-# Configuration - override via environment variables or --base-url / --video CLI args
+# Configuration - override via environment variables or CLI args
 BASE_URL = os.getenv("SWISHVISION_BASE_URL", "http://localhost:8000")
 TEST_EMAIL = os.getenv("SWISHVISION_TEST_EMAIL", "test@example.com")
-TEST_PASSWORD = os.getenv("SWISHVISION_TEST_PASSWORD", "testpassword123")
-TEST_VIDEO_PATH = os.getenv("SWISHVISION_TEST_VIDEO", "")
+TEST_PASSWORD = os.getenv("SWISHVISION_TEST_PASSWORD")
+TEST_VIDEO_PATH = os.getenv("SWISHVISION_TEST_VIDEO")
 
 # Constants
 REGISTER_ENDPOINT = f"{BASE_URL}/api/auth/register"
@@ -209,17 +209,35 @@ def main():
         default=None,
         help="Path to test video file (overrides SWISHVISION_TEST_VIDEO env var)",
     )
+    parser.add_argument(
+        "--email",
+        default=None,
+        help="Test account email (overrides SWISHVISION_TEST_EMAIL; default: test@example.com)",
+    )
+    parser.add_argument(
+        "--password",
+        default=None,
+        help="Test account password (overrides SWISHVISION_TEST_PASSWORD env var)",
+    )
     args = parser.parse_args()
 
-    global BASE_URL, TEST_VIDEO_PATH, REGISTER_ENDPOINT, LOGIN_ENDPOINT, UPLOAD_ENDPOINT, SESSION_ENDPOINT
+    global BASE_URL, TEST_EMAIL, TEST_PASSWORD, TEST_VIDEO_PATH, REGISTER_ENDPOINT, LOGIN_ENDPOINT, UPLOAD_ENDPOINT, SESSION_ENDPOINT
     if args.base_url:
         BASE_URL = args.base_url
         REGISTER_ENDPOINT = f"{BASE_URL}/api/auth/register"
         LOGIN_ENDPOINT = f"{BASE_URL}/api/auth/login"
         UPLOAD_ENDPOINT = f"{BASE_URL}/api/sessions/upload"
         SESSION_ENDPOINT = f"{BASE_URL}/api/sessions"
+    if args.email:
+        TEST_EMAIL = args.email
+    if args.password:
+        TEST_PASSWORD = args.password
     if args.video:
         TEST_VIDEO_PATH = args.video
+
+    if not TEST_PASSWORD:
+        print("ERROR: No test password provided. Use --password or set SWISHVISION_TEST_PASSWORD.")
+        return 1
 
     if not TEST_VIDEO_PATH:
         print("ERROR: No test video path provided. Use --video or set SWISHVISION_TEST_VIDEO.")

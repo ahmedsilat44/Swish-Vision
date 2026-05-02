@@ -32,3 +32,5 @@ def dashboard_summary(db: Session = Depends(get_db), current_user: User = Depend
 def dashboard_trends(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     # TODO: Build trend data across sessions
     return {"trends": []}
+
+

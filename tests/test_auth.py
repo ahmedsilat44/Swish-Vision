@@ -194,14 +194,95 @@ class TestRegistration:
 
 class TestLogin:
     def test_login_success(self, client):
-        client.post("/api/register", json={"name": "Test", "email": "login@example.com", "password": "Password1"})
-        res = client.post("/api/login", json={"email": "login@example.com", "password": "Password1"})
+        client.post("/api/auth/register", json={"name": "Test", "email": "login@example.com", "password": "Password1"})
+        res = client.post("/api/auth/login", json={"email": "login@example.com", "password": "Password1"})
         assert res.status_code == 200
         assert "access_token" in res.json()
 
     def test_login_invalid_credentials(self, client):
-        res = client.post("/api/login", json={"email": "noone@example.com", "password": "Wrong123"})
+        res = client.post("/api/auth/login", json={"email": "noone@example.com", "password": "Wrong123"})
         assert res.status_code == 401
+
+
+class TestResetPassword:
+    def test_reset_password_success_then_login_with_new_password(self, client):
+        register_res = client.post(
+            "/api/auth/register",
+            json={"name": "Reset User", "email": "reset@example.com", "password": "Password1"},
+        )
+        assert register_res.status_code == 201
+
+        reset_res = client.post(
+            "/api/auth/reset-password",
+            json={
+                "email": "reset@example.com",
+                "current_password": "Password1",
+                "new_password": "Password2",
+            },
+        )
+        assert reset_res.status_code == 200
+        assert "updated" in reset_res.json().get("message", "").lower()
+
+        old_login = client.post(
+            "/api/auth/login",
+            json={"email": "reset@example.com", "password": "Password1"},
+        )
+        assert old_login.status_code == 401
+
+        new_login = client.post(
+            "/api/auth/login",
+            json={"email": "reset@example.com", "password": "Password2"},
+        )
+        assert new_login.status_code == 200
+        assert "access_token" in new_login.json()
+
+    def test_reset_password_rejects_invalid_current_password(self, client):
+        client.post(
+            "/api/auth/register",
+            json={"name": "Reset User 2", "email": "reset2@example.com", "password": "Password1"},
+        )
+
+        reset_res = client.post(
+            "/api/auth/reset-password",
+            json={
+                "email": "reset2@example.com",
+                "current_password": "WrongPassword1",
+                "new_password": "Password2",
+            },
+        )
+        assert reset_res.status_code == 401
+
+    def test_reset_password_rejects_weak_new_password(self, client):
+        client.post(
+            "/api/auth/register",
+            json={"name": "Reset User 3", "email": "reset3@example.com", "password": "Password1"},
+        )
+
+        reset_res = client.post(
+            "/api/auth/reset-password",
+            json={
+                "email": "reset3@example.com",
+                "current_password": "Password1",
+                "new_password": "short",
+            },
+        )
+        assert reset_res.status_code == 422
+
+    def test_reset_password_rejects_same_new_password(self, client):
+        client.post(
+            "/api/auth/register",
+            json={"name": "Reset User 4", "email": "reset4@example.com", "password": "Password1"},
+        )
+
+        reset_res = client.post(
+            "/api/auth/reset-password",
+            json={
+                "email": "reset4@example.com",
+                "current_password": "Password1",
+                "new_password": "Password1",
+            },
+        )
+        assert reset_res.status_code == 422
 
 
 class TestLogout:

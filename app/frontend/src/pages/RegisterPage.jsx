@@ -1,6 +1,8 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../AuthContext";
 
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
 
 const styles = {
   page: {
@@ -179,7 +181,9 @@ function getStrength(password) {
   return { score, label: labels[score] || "", color: colors[score] || "#1e1e2e" };
 }
 
-export function RegisterPage({ onRegisterSuccess, onGoToLogin }) {
+export function RegisterPage() {
+  const { login } = useAuth();
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -284,9 +288,11 @@ export function RegisterPage({ onRegisterSuccess, onGoToLogin }) {
       }
 
       if (data?.access_token) {
-        localStorage.setItem("access_token", data.access_token);
+        login(data.access_token);
+        navigate("/dashboard", { replace: true });
+      } else {
+        navigate("/login");
       }
-      if (onRegisterSuccess) onRegisterSuccess(data);
 
     } catch (err) {
       setApiError("Cannot connect to server. Check your connection.");
@@ -427,7 +433,7 @@ export function RegisterPage({ onRegisterSuccess, onGoToLogin }) {
           <button
             type="button"
             style={styles.link}
-            onClick={() => { if (onGoToLogin) onGoToLogin(); }}
+            onClick={() => navigate("/login")}
           >
             Sign in
           </button>

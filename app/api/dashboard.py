@@ -7,7 +7,7 @@ from app.models.user import User
 from app.models.session import SessionModel
 from app.models.report import Report
 from app.core.security import get_current_user
-from app.schemas.session import DashboardSummaryResponse, TrendPointResponse
+from app.schemas.dashboard import DashboardSummaryResponse, TrendPointResponse
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 

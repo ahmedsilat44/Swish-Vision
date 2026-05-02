@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 from datetime import datetime
 from typing import Optional
 
@@ -11,8 +11,7 @@ class SessionResponse(BaseModel):
     created_at: datetime
     completed_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SessionListResponse(BaseModel):
@@ -21,8 +20,7 @@ class SessionListResponse(BaseModel):
     status: str
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ShotDetail(BaseModel):
@@ -31,8 +29,11 @@ class ShotDetail(BaseModel):
     release_angle: Optional[float] = None
     elbow_angle_at_release: Optional[float] = None
 
+    model_config = ConfigDict(from_attributes=True)
+
 
 class ShotAnalyticsResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     session_id: int
     shots: list[ShotDetail]
     total_shots: int
@@ -46,41 +47,34 @@ class AngleFrameDetail(BaseModel):
     knee_angle: Optional[float] = None
     shoulder_angle: Optional[float] = None
 
+    model_config = ConfigDict(from_attributes=True)
+
 
 class AngleDataResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     session_id: int
     frames: list[AngleFrameDetail]
 
 
 class ReportResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
     shot_percentage: Optional[float] = None
-    shots_made: int = 0
-    shots_missed: int = 0
+    makes: int = Field(0, alias="shots_made")
+    misses: int = Field(0, alias="shots_missed")
     avg_release_angle: Optional[float] = None
     feedback_text: Optional[str] = None
 
 
-class ShotEventResponse(BaseModel):
-    shot_number: int
-    result: str
-    release_angle: Optional[float] = None
-    elbow_angle_at_release: Optional[float] = None
-
-    class Config:
-        from_attributes = True
+class ShotEventResponse(ShotDetail):
+    model_config = ConfigDict(from_attributes=True)
 
 
-class AngleFrameResponse(BaseModel):
-    frame_number: int
-    elbow_angle: Optional[float] = None
-    knee_angle: Optional[float] = None
-    shoulder_angle: Optional[float] = None
-
-    class Config:
-        from_attributes = True
+class AngleFrameResponse(AngleFrameDetail):
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DashboardSummaryResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     total_sessions: int
     completed_sessions: int
     total_shots: int
@@ -89,6 +83,7 @@ class DashboardSummaryResponse(BaseModel):
 
 
 class TrendPointResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     session_id: int
     created_at: datetime
     total_shots: int

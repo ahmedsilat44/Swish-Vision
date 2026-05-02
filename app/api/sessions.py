@@ -170,5 +170,8 @@ def delete_session(
             except OSError:
                 pass
 
+    db.query(Report).filter(Report.session_id == session.id).delete(synchronize_session=False)
+    db.query(ShotEvent).filter(ShotEvent.session_id == session.id).delete(synchronize_session=False)
+    db.query(AngleFrame).filter(AngleFrame.session_id == session.id).delete(synchronize_session=False)
     db.delete(session)
     db.commit()

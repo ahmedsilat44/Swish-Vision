@@ -13,8 +13,6 @@ from app.models.angle_frame import AngleFrame
 from app.schemas.session import (
     SessionResponse,
     SessionListResponse,
-    ShotAnalyticsResponse,
-    AngleDataResponse,
     ReportResponse,
     ShotEventResponse,
     AngleFrameResponse,

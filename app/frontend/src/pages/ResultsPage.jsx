@@ -5,11 +5,17 @@ import { Doughnut } from 'react-chartjs-2';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:8000').replace(/\/+$/, '');
 
 function apiFetch(path) {
   const token = localStorage.getItem('access_token');
-  return fetch(`${API_URL}${path}`, {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const normalizedBase =
+    API_URL.endsWith('/api') && normalizedPath.startsWith('/api')
+      ? API_URL.slice(0, -4)
+      : API_URL;
+
+  return fetch(`${normalizedBase}${normalizedPath}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
 }

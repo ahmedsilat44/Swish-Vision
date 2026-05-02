@@ -59,7 +59,15 @@ export default function ResultsPage() {
       }
       if (session.status === 'completed') {
         await loadAnalytics();
+        return;
       }
+
+      setPageState('failed');
+      setErrorMsg(
+        session.status
+          ? `Unexpected session status: ${session.status}.`
+          : 'Unexpected session status received.'
+      );
     } catch {
       setPageState('failed');
       setErrorMsg('Network error — could not load session.');

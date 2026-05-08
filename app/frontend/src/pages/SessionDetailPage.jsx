@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import Tooltip from '../components/Tooltip';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
@@ -57,15 +58,33 @@ export default function SessionDetailPage() {
       </h2>
 
       {shots.length === 0 ? (
-        <p style={styles.msg}>No shot data available yet.</p>
+        <p className="info-msg">
+          ⚠️ Pose data unavailable for this session. The player may have been out of frame
+          or occluded during shot attempts.
+        </p>
       ) : (
         <div style={styles.tableWrap}>
           <table style={styles.table}>
             <thead>
               <tr>
-                {['Shot', 'Frame', 'Elbow Angle', 'Shoulder Angle', 'Knee Angle', 'Outcome'].map((h) => (
-                  <th key={h} style={styles.th}>{h}</th>
-                ))}
+                <th style={styles.th}>Shot</th>
+                <th style={styles.th}>Frame</th>
+                <th style={styles.th}>
+                  Elbow Angle
+                  <Tooltip
+                    text="The angle at your shooting elbow at the point of release. Consistent values across shots indicate repeatable form."
+                    label="What is Elbow Angle?"
+                  />
+                </th>
+                <th style={styles.th}>
+                  Shoulder Angle
+                  <Tooltip
+                    text="The angle of the ball's trajectory at the moment it leaves your hands. The ideal range is 45–55°."
+                    label="What is Release Angle?"
+                  />
+                </th>
+                <th style={styles.th}>Knee Angle</th>
+                <th style={styles.th}>Outcome</th>
               </tr>
             </thead>
             <tbody>

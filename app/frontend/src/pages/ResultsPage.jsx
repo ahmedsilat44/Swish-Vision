@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Doughnut } from 'react-chartjs-2';
 import './ResultsPage.css';
+import MetricTooltip from '../components/Tooltip';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -22,7 +23,7 @@ function apiFetch(path) {
 }
 
 export default function ResultsPage() {
-  const { id: sessionId } = useParams();
+  const { sessionId } = useParams();
   const navigate = useNavigate();
 
   // 'loading' | 'processing' | 'queued' | 'failed' | 'completed'
@@ -193,8 +194,20 @@ export default function ResultsPage() {
                 <tr>
                   <th style={s.th}>#</th>
                   <th style={s.th}>Outcome</th>
-                  <th style={s.th}>Release Angle</th>
-                  <th style={s.th}>Elbow Angle</th>
+                  <th style={s.th}>
+                    Release Angle
+                    <MetricTooltip
+                      text="The angle of the ball's trajectory at the moment it leaves your hands. The ideal range is 45–55°."
+                      label="What is Release Angle?"
+                    />
+                  </th>
+                  <th style={s.th}>
+                    Elbow Angle
+                    <MetricTooltip
+                      text="The angle at your shooting elbow at the point of release. Consistent values across shots indicate repeatable form."
+                      label="What is Elbow Angle?"
+                    />
+                  </th>
                 </tr>
               </thead>
               <tbody>

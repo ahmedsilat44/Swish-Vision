@@ -166,7 +166,7 @@ def get_report(
 @router.get("/{session_id}/shots", response_model=ShotAnalyticsResponse)
 def get_shots(session: SessionModel = Depends(verify_session_ownership), db: Session = Depends(get_db)):
     shots = db.query(ShotEvent).filter(ShotEvent.session_id == session.id).order_by(ShotEvent.shot_number).all()
-    
+
     def normalize_result(result):
         if result in ("make", "made", "1", 1, True):
             return "made"
@@ -186,7 +186,7 @@ def get_shots(session: SessionModel = Depends(verify_session_ownership), db: Ses
 
     makes = sum(1 for s in normalized_shots if s["outcome"] == "made")
     misses = len(shots) - makes
-    
+
     return {
         "session_id": session.id,
         "shots": normalized_shots,
@@ -268,7 +268,6 @@ def retry_session(
     return session
 
 
-
 @router.delete("/{session_id}", status_code=204)
 def delete_session(
     session: SessionModel = Depends(verify_session_ownership),
@@ -292,5 +291,3 @@ def delete_session(
     db.query(AngleFrame).filter(AngleFrame.session_id == session.id).delete(synchronize_session=False)
     db.delete(session)
     db.commit()
-
-

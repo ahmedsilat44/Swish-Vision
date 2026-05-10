@@ -1,23 +1,21 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, LineController } from 'chart.js';
+import annotationPlugin from 'chartjs-plugin-annotation';
 import { Doughnut } from 'react-chartjs-2';
 import './ResultsPage.css';
 import MetricTooltip from '../components/Tooltip';
 
-ChartJS.register(ArcElement, Tooltip, Legend);
+ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, LineController, annotationPlugin);
 
 const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:8000').replace(/\/+$/, '');
+const API_BASE = API_URL.endsWith('/api') ? API_URL.slice(0, -4) : API_URL;
 
 function apiFetch(path) {
   const token = localStorage.getItem('access_token');
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-  const normalizedBase =
-    API_URL.endsWith('/api') && normalizedPath.startsWith('/api')
-      ? API_URL.slice(0, -4)
-      : API_URL;
 
-  return fetch(`${normalizedBase}${normalizedPath}`, {
+  return fetch(`${API_BASE}${normalizedPath}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
 }
@@ -31,7 +29,53 @@ export default function ResultsPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [report, setReport] = useState(null);
   const [shots, setShots] = useState([]);
+  const [angleFrames, setAngleFrames] = useState([]);
+  const [analysisReady, setAnalysisReady] = useState(false);
+  const [videoSrc, setVideoSrc] = useState(null);
+  const chartRef = useRef(null);
+  const chartInstance = useRef(null);
   const pollTimer = useRef(null);
+
+  useEffect(() => {
+    if (pageState !== 'completed') return;
+    apiFetch(`/api/sessions/${sessionId}/video_token`)
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(data => {
+        setVideoSrc(`${API_BASE}/api/sessions/${sessionId}/output_video?video_token=${encodeURIComponent(data.video_token)}`);
+      })
+      .catch(() => {
+        // Fallback: if token endpoint fails the video section will remain empty
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pageState, sessionId]);
+
+  useEffect(() => {
+    if (pageState !== 'completed' || !report) {
+      setAnalysisReady(false);
+      return undefined;
+    }
+
+    const animationFrame = window.requestAnimationFrame(() => setAnalysisReady(true));
+    return () => window.cancelAnimationFrame(animationFrame);
+  }, [pageState, report]);
+
+  useEffect(() => {
+    if (chartInstance.current) {
+      chartInstance.current.destroy();
+      chartInstance.current = null;
+    }
+
+    if (angleFrames.length > 0 && chartRef.current) {
+      renderElbowAngleChart(angleFrames, chartRef, chartInstance);
+    }
+
+    return () => {
+      if (chartInstance.current) {
+        chartInstance.current.destroy();
+        chartInstance.current = null;
+      }
+    };
+  }, [angleFrames]);
 
   useEffect(() => {
     loadSession();
@@ -91,9 +135,10 @@ export default function ResultsPage() {
 
   async function loadAnalytics() {
     try {
-      const [reportRes, shotsRes] = await Promise.all([
+      const [reportRes, shotsRes, anglesRes] = await Promise.all([
         apiFetch(`/api/sessions/${sessionId}/report`),
         apiFetch(`/api/sessions/${sessionId}/shots`),
+        apiFetch(`/api/sessions/${sessionId}/angles`),
       ]);
       if (!reportRes.ok || !shotsRes.ok) {
         setPageState('failed');
@@ -102,8 +147,10 @@ export default function ResultsPage() {
       }
       const reportData = await reportRes.json();
       const shotsData = await shotsRes.json();
+      const anglesData = anglesRes.ok ? await anglesRes.json() : { frames: [] };
       setReport(reportData);
       setShots(shotsData.shots);
+      setAngleFrames(anglesData.frames || []);
       setPageState('completed');
     } catch {
       setPageState('failed');
@@ -142,9 +189,7 @@ export default function ResultsPage() {
   }
 
   // completed
-  const token = localStorage.getItem('access_token') || '';
-  const videoSrc = `${API_URL}/api/sessions/${sessionId}/output_video?token=${encodeURIComponent(token)}`;
-  const shotPercentage = Number.isFinite(report?.shot_percentage) ? report.shot_percentage : 0;
+  const shotPercentage = getNullableNumber(report?.shot_percentage);
   const shotsMade = Number(report?.shots_made) || 0;
   const shotsMissed = Number(report?.shots_missed) || 0;
   const totalShots = Number(report?.total_shots) || shots.length;
@@ -162,10 +207,12 @@ export default function ResultsPage() {
 
   return (
     <div style={s.page}>
+      {renderFormAnalysis(report, analysisReady, angleFrames, chartRef, sessionId)}
+
       {/* Hero stat */}
       <div style={s.heroCard}>
         <p style={s.heroLabel}>Shot Percentage</p>
-        <p style={s.heroStat}>{shotPercentage.toFixed(1)}%</p>
+        <p style={s.heroStat}>{shotPercentage != null ? `${shotPercentage.toFixed(1)}%` : 'N/A'}</p>
         <p style={s.heroSub}>
           {shotsMade} made · {shotsMissed} missed · {totalShots} total
         </p>
@@ -233,9 +280,13 @@ export default function ResultsPage() {
       {/* Annotated video player */}
       <div style={s.card}>
         <h3 style={s.cardTitle}>Annotated Video</h3>
-        <video controls width="100%" preload="metadata" style={s.video} src={videoSrc}>
-          Your browser does not support HTML5 video.
-        </video>
+        {videoSrc ? (
+          <video key={videoSrc} controls width="100%" preload="metadata" style={s.video} src={videoSrc}>
+            Your browser does not support HTML5 video.
+          </video>
+        ) : (
+          <p style={s.muted}>Preparing video…</p>
+        )}
       </div>
 
       <button style={s.backBtn} onClick={() => navigate('/upload')}>
@@ -243,6 +294,267 @@ export default function ResultsPage() {
       </button>
     </div>
   );
+}
+
+function renderFormAnalysis(report, animate, angleFrames, chartRef, sessionId) {
+  const consistencyScore = getNullableNumber(report?.shot_percentage);
+  const avgReleaseAngle = getNullableNumber(report?.avg_release_angle);
+  const feedbackText = normalizeFeedbackText(report?.feedback_text);
+  const consistencyLabel = getConsistencyLabel(consistencyScore);
+  const releaseTone = getReleaseTone(avgReleaseAngle);
+
+  return (
+    <div style={s.card}>
+      <h3 style={s.cardTitle}>Form Analysis</h3>
+      <div style={s.formAnalysisGrid}>
+        <section style={s.analysisBlock}>
+          <div style={s.analysisHeader}>
+            <span style={s.analysisLabel}>Consistency Score</span>
+            <span style={s.analysisMeta}>{consistencyLabel}</span>
+          </div>
+          <div style={s.scoreRow}>
+            <div style={s.scoreValue}>{consistencyScore != null ? consistencyScore.toFixed(0) : 'N/A'}</div>
+            <div style={s.scoreBarWrap} aria-label="Consistency score bar">
+              <div style={s.scoreBarTrack}>
+                <div style={s.scoreBarFillContainer}>
+                  <div
+                    style={{
+                      ...s.scoreBarFill,
+                      width: consistencyScore != null && animate ? `${Math.max(0, Math.min(100, consistencyScore))}%` : '0%',
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+          <p style={s.analysisHint}>Excellent (≥80), Good (≥60), Fair (≥40), Needs Work (&lt;40)</p>
+        </section>
+
+        <section style={s.analysisBlock}>
+          <div style={s.analysisHeader}>
+            <span style={s.analysisLabel}>Average Release Angle</span>
+            <span style={{ ...s.analysisMeta, color: releaseTone.color }}>{releaseTone.label}</span>
+          </div>
+          <div style={s.angleValueRow}>
+            <div style={{ ...s.angleValue, color: releaseTone.color }}>
+              {avgReleaseAngle != null ? `${avgReleaseAngle.toFixed(1)}°` : 'N/A'}
+            </div>
+            <div style={s.angleBandWrap} aria-label="Release angle reference band">
+              <div style={s.angleScale}>
+                <div
+                  style={{
+                    ...s.angleIdealBand,
+                    left: '50%',
+                    width: '11.1%',
+                  }}
+                />
+                <div style={s.angleMarkerRail} />
+                {avgReleaseAngle != null ? (
+                  <div
+                    style={{
+                      ...s.angleMarker,
+                      left: `${Math.max(0, Math.min(100, (avgReleaseAngle / 90) * 100))}%`,
+                      opacity: animate ? 1 : 0,
+                    }}
+                  />
+                ) : null}
+              </div>
+              <div style={s.angleScaleLabels}>
+                <span>0°</span>
+                <span>Ideal: 45–55°</span>
+                <span>90°</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section style={{ ...s.analysisBlock, ...s.feedbackBlock }}>
+          <div style={s.analysisHeader}>
+            <span style={s.analysisLabel}>Feedback</span>
+          </div>
+          <p style={s.feedbackText}>{feedbackText}</p>
+        </section>
+
+        {angleFrames.length > 0 && (
+          <section style={{ ...s.analysisBlock, ...s.chartBlock }}>
+            <div style={s.analysisHeader}>
+              <span style={s.analysisLabel}>Elbow Angle by Frame</span>
+            </div>
+            <div style={s.chartContainer}>
+              <canvas id="elbow-angle-chart" ref={chartRef} width="400" height="200" />
+            </div>
+          </section>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function getNullableNumber(value) {
+  return Number.isFinite(value) ? value : null;
+}
+
+function normalizeFeedbackText(value) {
+  if (typeof value !== 'string') {
+    return 'No feedback available for this session.';
+  }
+
+  const text = value.trim();
+  return text ? text : 'No feedback available for this session.';
+}
+
+function getConsistencyLabel(score) {
+  if (score == null) return 'N/A';
+  if (score >= 80) return 'Excellent';
+  if (score >= 60) return 'Good';
+  if (score >= 40) return 'Fair';
+  return 'Needs Work';
+}
+
+function getReleaseTone(angle) {
+  if (angle == null) {
+    return { label: 'N/A', color: '#6b7280' };
+  }
+
+  if (angle >= 45 && angle <= 55) {
+    return { label: 'Ideal', color: '#16a34a' };
+  }
+
+  if (angle >= 40 && angle <= 60) {
+    return { label: 'Near ideal', color: '#d97706' };
+  }
+
+  return { label: 'Outside range', color: '#dc2626' };
+}
+
+function renderElbowAngleChart(angleFrames, chartRef, chartInstance) {
+  if (!angleFrames || angleFrames.length === 0 || !chartRef.current) {
+    return;
+  }
+
+  const COLORS = [
+    '#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6',
+    '#06b6d4', '#f97316', '#ec4899', '#14b8a6', '#a3e635',
+  ];
+
+  // Group frames by shot_number
+  const shotMap = {};
+  angleFrames.forEach((frame) => {
+    const shotNum = frame.shot_number;
+    if (!shotMap[shotNum]) {
+      shotMap[shotNum] = [];
+    }
+    shotMap[shotNum].push(frame);
+  });
+
+  // Build datasets per shot
+  const datasets = [];
+  const shotNumbers = Object.keys(shotMap)
+    .map(Number)
+    .sort((a, b) => a - b);
+  const maxLength = Math.max(...shotNumbers.map((n) => shotMap[n].length));
+
+  shotNumbers.forEach((shotNum, idx) => {
+    const frames = shotMap[shotNum];
+    const color = COLORS[idx % COLORS.length];
+    const data = frames.map((f) => f.elbow_angle);
+
+    datasets.push({
+      label: `Shot ${shotNum}`,
+      data,
+      borderColor: color,
+      backgroundColor: `${color}08`,
+      borderWidth: 2.5,
+      tension: 0.3,
+      spanGaps: true,
+      pointRadius: 3,
+      pointBackgroundColor: color,
+      pointBorderColor: '#fff',
+      pointBorderWidth: 1.5,
+    });
+  });
+
+  // Generate x-axis labels
+  const xLabels = Array.from({ length: maxLength }, (_, i) => `Frame ${i + 1}`);
+
+  const ctx = chartRef.current.getContext('2d');
+  
+  // Destroy previous chart instance if it exists
+  if (chartInstance.current) {
+    chartInstance.current.destroy();
+  }
+
+  chartInstance.current = new ChartJS(ctx, {
+    type: 'line',
+    data: {
+      labels: xLabels,
+      datasets,
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            usePointStyle: true,
+            padding: 15,
+            font: { size: 12, weight: 500 },
+            color: '#374151',
+          },
+        },
+        annotation: {
+          annotations: {
+            releaseZone: {
+              type: 'box',
+              xMin: -0.5,
+              xMax: maxLength - 0.5,
+              yMin: 85,
+              yMax: 100,
+              backgroundColor: 'rgba(34, 197, 94, 0.15)',
+              borderColor: 'rgba(34, 197, 94, 0.4)',
+              borderWidth: 1.5,
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          title: {
+            display: true,
+            text: 'Frame',
+            font: { size: 13, weight: 600 },
+            color: '#111827',
+          },
+          ticks: {
+            font: { size: 11 },
+            color: '#6b7280',
+          },
+          grid: {
+            color: 'rgba(107, 114, 128, 0.1)',
+          },
+        },
+        y: {
+          title: {
+            display: true,
+            text: 'Elbow Angle (°)',
+            font: { size: 13, weight: 600 },
+            color: '#111827',
+          },
+          min: 60,
+          max: 180,
+          ticks: {
+            font: { size: 11 },
+            color: '#6b7280',
+            stepSize: 20,
+          },
+          grid: {
+            color: 'rgba(107, 114, 128, 0.1)',
+          },
+        },
+      },
+    },
+  });
 }
 
 function CenteredCard({ children }) {
@@ -300,6 +612,147 @@ const s = {
     margin: 0,
     color: '#aaa',
     fontSize: '0.9rem',
+  },
+  formAnalysisGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+    gap: '1rem',
+  },
+  analysisBlock: {
+    border: '1px solid #e5e7eb',
+    borderRadius: 12,
+    padding: '1rem 1.1rem',
+    background: 'linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%)',
+  },
+  analysisHeader: {
+    display: 'flex',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    gap: '0.75rem',
+    marginBottom: '0.85rem',
+  },
+  analysisLabel: {
+    fontSize: '0.95rem',
+    fontWeight: 700,
+    color: '#111827',
+  },
+  analysisMeta: {
+    fontSize: '0.8rem',
+    fontWeight: 700,
+    color: '#6b7280',
+    textTransform: 'uppercase',
+    letterSpacing: '0.08em',
+  },
+  scoreRow: {
+    display: 'grid',
+    gridTemplateColumns: 'auto 1fr',
+    gap: '0.9rem',
+    alignItems: 'center',
+  },
+  scoreValue: {
+    fontSize: '2.1rem',
+    fontWeight: 800,
+    lineHeight: 1,
+    color: '#111827',
+    minWidth: 88,
+  },
+  scoreBarWrap: {
+    width: '100%',
+  },
+  scoreBarTrack: {
+    position: 'relative',
+    width: '100%',
+    height: 16,
+    borderRadius: 999,
+    overflow: 'hidden',
+    background: '#e5e7eb',
+    boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.08)',
+  },
+  scoreBarFillContainer: {
+    position: 'absolute',
+    inset: 0,
+  },
+  scoreBarFill: {
+    height: '100%',
+    borderRadius: 999,
+    background: 'linear-gradient(90deg, #ef4444 0%, #f59e0b 50%, #22c55e 100%)',
+    transition: 'width 800ms cubic-bezier(0.22, 1, 0.36, 1)',
+  },
+  analysisHint: {
+    margin: '0.75rem 0 0',
+    fontSize: '0.82rem',
+    color: '#6b7280',
+  },
+  angleValueRow: {
+    display: 'grid',
+    gap: '0.85rem',
+  },
+  angleValue: {
+    fontSize: '2rem',
+    fontWeight: 800,
+    lineHeight: 1,
+  },
+  angleBandWrap: {
+    display: 'grid',
+    gap: '0.45rem',
+  },
+  angleScale: {
+    position: 'relative',
+    height: 18,
+    borderRadius: 999,
+    background: 'linear-gradient(90deg, #fee2e2 0%, #fef3c7 35%, #dcfce7 100%)',
+    overflow: 'hidden',
+  },
+  angleIdealBand: {
+    position: 'absolute',
+    top: 2,
+    bottom: 2,
+    borderRadius: 999,
+    background: 'rgba(34, 197, 94, 0.28)',
+    border: '1px solid rgba(34, 197, 94, 0.55)',
+  },
+  angleMarkerRail: {
+    position: 'absolute',
+    inset: '50% 0 auto 0',
+    height: 2,
+    transform: 'translateY(-50%)',
+    background: 'rgba(17, 24, 39, 0.12)',
+  },
+  angleMarker: {
+    position: 'absolute',
+    top: '50%',
+    width: 14,
+    height: 14,
+    borderRadius: '50%',
+    transform: 'translate(-50%, -50%)',
+    background: '#111827',
+    boxShadow: '0 0 0 4px rgba(17, 24, 39, 0.14)',
+    transition: 'left 800ms cubic-bezier(0.22, 1, 0.36, 1), opacity 250ms ease',
+  },
+  angleScaleLabels: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: '0.75rem',
+    fontSize: '0.78rem',
+    color: '#6b7280',
+  },
+  feedbackBlock: {
+    gridColumn: '1 / -1',
+  },
+  feedbackText: {
+    margin: 0,
+    color: '#374151',
+    fontSize: '0.95rem',
+    lineHeight: 1.6,
+    whiteSpace: 'pre-wrap',
+  },
+  chartBlock: {
+    gridColumn: '1 / -1',
+  },
+  chartContainer: {
+    position: 'relative',
+    width: '100%',
+    minHeight: 300,
   },
   chartWrap: {
     maxWidth: 280,

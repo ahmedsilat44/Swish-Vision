@@ -1,5 +1,4 @@
 """Tests for middleware behaviour, specifically security headers and HTTPS redirect."""
-import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -103,3 +102,21 @@ def test_static_security_headers_always_present():
     assert response.headers.get("X-Content-Type-Options") == "nosniff"
     assert response.headers.get("X-Frame-Options") == "DENY"
     assert response.headers.get("X-XSS-Protection") == "1; mode=block"
+
+
+def test_unhandled_error_keeps_cors_headers_for_allowed_origin():
+    """Even on unexpected 500s, allowed browser origins should still receive CORS headers."""
+    app = FastAPI()
+
+    @app.get("/boom")
+    def boom():
+        raise RuntimeError("unexpected")
+
+    setup_middleware(app)
+
+    client = TestClient(app, raise_server_exceptions=False)
+    response = client.get("/boom", headers={"Origin": "http://localhost:3000"})
+
+    assert response.status_code == 500
+    assert response.headers.get("Access-Control-Allow-Origin") == "http://localhost:3000"
+    assert response.headers.get("Access-Control-Allow-Credentials") == "true"

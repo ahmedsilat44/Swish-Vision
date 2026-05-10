@@ -114,13 +114,16 @@ def process_video(self, session_id: int):
         if not os.path.exists(report_path):
             raise FileNotFoundError(f"Report file missing: {report_path}")
         if os.path.getsize(report_path) == 0:
-            raise ValueError(f"Report file is empty: {report_path}")
+            logger.warning("Report file is empty for session %s — no shots detected in video", session_id)
 
         # Extract pipeline data
         shot_angles = pipeline_data.get("shot_angles", [])
         shot_starts = pipeline_data.get("shot_strt", [])
         shot_ends = pipeline_data.get("shot_end", [])
         order_shots = pipeline_data.get("order_shots", [])
+        pipeline_made = pipeline_data.get("made_shots")
+        pipeline_missed = pipeline_data.get("missed_shots")
+        pipeline_total = pipeline_data.get("total_shots")
         logger.debug(
             "Counts for session %s: shot_angles=%s shot_starts=%s shot_ends=%s order_shots=%s",
             session_id,
@@ -159,6 +162,24 @@ def process_video(self, session_id: int):
             logger.warning("No shot_angles or shot_starts available for AngleFrame insert (session %s)", session_id)
 
         parse_and_persist(session_id=session_id, report_path=report_path, db=db)
+
+        # Overwrite makes/misses/total on the Report row with the real ball-tracker counts
+        # (parse_and_persist derives these from form text, not actual basket outcomes).
+        if pipeline_made is not None and pipeline_missed is not None:
+            from app.models.report import Report as ReportModel
+            real_makes = int(pipeline_made)
+            real_misses = int(pipeline_missed)
+            real_total = int(pipeline_total) if pipeline_total is not None else real_makes + real_misses
+            report_row = db.query(ReportModel).filter(ReportModel.session_id == session_id).first()
+            if report_row:
+                report_row.makes = real_makes
+                report_row.misses = real_misses
+                report_row.total_shots = real_total
+                db.commit()
+                logger.info(
+                    "Updated Report for session %s with pipeline counts: %s makes, %s misses, %s total",
+                    session_id, real_makes, real_misses, real_total,
+                )
 
         # Keep parser as source-of-truth for rows, then enrich with pipeline-only fields.
         shot_event_columns = _get_table_columns(db, "shot_events")

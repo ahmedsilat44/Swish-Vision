@@ -133,7 +133,7 @@ export default function HelpPage() {
         <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
           <div>
             <p style={{ margin: "0 0 2px", fontWeight: 600, fontSize: "0.875rem", color: "#fff" }}>Shot Percentage</p>
-            <p style={{ margin: 0, fontSize: "0.82rem", color: "#666", lineHeight: 1.6 }}>Makes ÷ total attempts × 100. A "Pending" badge means the session is still processing or the report hasn't been generated yet.</p>
+            <p style={{ margin: 0, fontSize: "0.82rem", color: "#666", lineHeight: 1.6 }}>Makes ÷ total attempts × 100. This value may be unavailable until processing finishes and a report is generated; if no shots are detected or the value is missing, the Results page may display 0.0%.</p>
           </div>
           <div>
             <p style={{ margin: "0 0 2px", fontWeight: 600, fontSize: "0.875rem", color: "#fff" }}>Release Angle</p>

@@ -106,6 +106,11 @@ def process_video(self, session_id: int):
         # Run the CV pipeline
         from main import run_pipeline
         output_path, report_path, pipeline_data = run_pipeline(input_path, session_id=session_id)
+        
+        # Convert to absolute paths
+        output_path = os.path.abspath(output_path)
+        report_path = os.path.abspath(report_path)
+        
         logger.info("Pipeline produced output_path=%s report_path=%s", output_path, report_path)
         if not os.path.exists(output_path):
             raise FileNotFoundError(f"Output video missing: {output_path}")

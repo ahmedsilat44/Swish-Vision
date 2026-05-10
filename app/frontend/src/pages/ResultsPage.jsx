@@ -242,17 +242,17 @@ export default function ResultsPage() {
                   <th style={s.th}>#</th>
                   <th style={s.th}>Outcome</th>
                   <th style={s.th}>
-                    Release Angle
+                    SEW Angle
                     <MetricTooltip
-                      text="The angle of the ball's trajectory at the moment it leaves your hands. The ideal range is 45–55°."
-                      label="What is Release Angle?"
+                      text="Shoulder-Elbow-Wrist angle at release. Indicates your arm form and shooting consistency. Ideal range is 65–75°."
+                      label="What is SEW Angle?"
                     />
                   </th>
                   <th style={s.th}>
-                    Elbow Angle
+                    ESH Angle
                     <MetricTooltip
-                      text="The angle at your shooting elbow at the point of release. Consistent values across shots indicate repeatable form."
-                      label="What is Elbow Angle?"
+                      text="Elbow-Shoulder-Hip angle at release. Indicates your shooting arc. Ideal range is 120–135°."
+                      label="What is ESH Angle?"
                     />
                   </th>
                 </tr>
@@ -266,8 +266,8 @@ export default function ResultsPage() {
                       <td style={{ ...s.td, color: outcome === 'made' ? '#22c55e' : '#ef4444', fontWeight: 600 }}>
                         {outcome}
                       </td>
-                      <td style={s.td}>{shot.release_angle != null ? `${shot.release_angle.toFixed(1)}°` : '—'}</td>
-                      <td style={s.td}>{shot.elbow_angle_at_release != null ? `${shot.elbow_angle_at_release.toFixed(1)}°` : '—'}</td>
+                      <td style={s.td}>{shot.sew_angle != null ? `${shot.sew_angle.toFixed(1)}°` : '—'}</td>
+                      <td style={s.td}>{shot.esh_angle != null ? `${shot.esh_angle.toFixed(1)}°` : '—'}</td>
                     </tr>
                   );
                 })}
@@ -281,7 +281,7 @@ export default function ResultsPage() {
       <div style={s.card}>
         <h3 style={s.cardTitle}>Annotated Video</h3>
         {videoSrc ? (
-          <video key={videoSrc} controls width="100%" preload="metadata" style={s.video} src={videoSrc}>
+          <video key={videoSrc} controls width="100%" preload="auto" style={s.video} src={videoSrc} type="video/mp4">
             Your browser does not support HTML5 video.
           </video>
         ) : (
@@ -298,16 +298,18 @@ export default function ResultsPage() {
 
 function renderFormAnalysis(report, animate, angleFrames, chartRef, sessionId) {
   const consistencyScore = getNullableNumber(report?.shot_percentage);
-  const avgReleaseAngle = getNullableNumber(report?.avg_release_angle);
+  const avgSewAngle = getNullableNumber(report?.avg_sew_angle);
+  const avgEshAngle = getNullableNumber(report?.avg_esh_angle);
   const feedbackText = normalizeFeedbackText(report?.feedback_text);
   const consistencyLabel = getConsistencyLabel(consistencyScore);
-  const releaseTone = getReleaseTone(avgReleaseAngle);
+  const sewTone = getAngleTone(avgSewAngle, 65, 75);
+  const eshTone = getAngleTone(avgEshAngle, 120, 135);
 
   return (
     <div style={s.card}>
       <h3 style={s.cardTitle}>Form Analysis</h3>
       <div style={s.formAnalysisGrid}>
-        <section style={s.analysisBlock}>
+        <section style={{ ...s.analysisBlock, ...s.consistencyBlockFull }}>
           <div style={s.analysisHeader}>
             <span style={s.analysisLabel}>Consistency Score</span>
             <span style={s.analysisMeta}>{consistencyLabel}</span>
@@ -332,28 +334,28 @@ function renderFormAnalysis(report, animate, angleFrames, chartRef, sessionId) {
 
         <section style={s.analysisBlock}>
           <div style={s.analysisHeader}>
-            <span style={s.analysisLabel}>Average Release Angle</span>
-            <span style={{ ...s.analysisMeta, color: releaseTone.color }}>{releaseTone.label}</span>
+            <span style={s.analysisLabel}>Average SEW Angle</span>
+            <span style={{ ...s.analysisMeta, color: sewTone.color }}>{sewTone.label}</span>
           </div>
           <div style={s.angleValueRow}>
-            <div style={{ ...s.angleValue, color: releaseTone.color }}>
-              {avgReleaseAngle != null ? `${avgReleaseAngle.toFixed(1)}°` : 'N/A'}
+            <div style={{ ...s.angleValue, color: sewTone.color }}>
+              {avgSewAngle != null ? `${avgSewAngle.toFixed(1)}°` : 'N/A'}
             </div>
-            <div style={s.angleBandWrap} aria-label="Release angle reference band">
+            <div style={s.angleBandWrap} aria-label="SEW angle reference band">
               <div style={s.angleScale}>
                 <div
                   style={{
                     ...s.angleIdealBand,
-                    left: '50%',
-                    width: '11.1%',
+                    left: `${(65 / 180) * 100}%`,
+                    width: `${((75 - 65) / 180) * 100}%`,
                   }}
                 />
                 <div style={s.angleMarkerRail} />
-                {avgReleaseAngle != null ? (
+                {avgSewAngle != null ? (
                   <div
                     style={{
                       ...s.angleMarker,
-                      left: `${Math.max(0, Math.min(100, (avgReleaseAngle / 90) * 100))}%`,
+                      left: `${Math.max(0, Math.min(100, (avgSewAngle / 180) * 100))}%`,
                       opacity: animate ? 1 : 0,
                     }}
                   />
@@ -361,8 +363,46 @@ function renderFormAnalysis(report, animate, angleFrames, chartRef, sessionId) {
               </div>
               <div style={s.angleScaleLabels}>
                 <span>0°</span>
-                <span>Ideal: 45–55°</span>
-                <span>90°</span>
+                <span>Ideal: 65–75°</span>
+                <span>180°</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section style={s.analysisBlock}>
+          <div style={s.analysisHeader}>
+            <span style={s.analysisLabel}>Average ESH Angle</span>
+            <span style={{ ...s.analysisMeta, color: eshTone.color }}>{eshTone.label}</span>
+          </div>
+          <div style={s.angleValueRow}>
+            <div style={{ ...s.angleValue, color: eshTone.color }}>
+              {avgEshAngle != null ? `${avgEshAngle.toFixed(1)}°` : 'N/A'}
+            </div>
+            <div style={s.angleBandWrap} aria-label="ESH angle reference band">
+              <div style={s.angleScale}>
+                <div
+                  style={{
+                    ...s.angleIdealBand,
+                    left: `${(120 / 180) * 100}%`,
+                    width: `${((135 - 120) / 180) * 100}%`,
+                  }}
+                />
+                <div style={s.angleMarkerRail} />
+                {avgEshAngle != null ? (
+                  <div
+                    style={{
+                      ...s.angleMarker,
+                      left: `${Math.max(0, Math.min(100, (avgEshAngle / 180) * 100))}%`,
+                      opacity: animate ? 1 : 0,
+                    }}
+                  />
+                ) : null}
+              </div>
+              <div style={s.angleScaleLabels}>
+                <span>0°</span>
+                <span>Ideal: 120–135°</span>
+                <span>180°</span>
               </div>
             </div>
           </div>
@@ -378,10 +418,10 @@ function renderFormAnalysis(report, animate, angleFrames, chartRef, sessionId) {
         {angleFrames.length > 0 && (
           <section style={{ ...s.analysisBlock, ...s.chartBlock }}>
             <div style={s.analysisHeader}>
-              <span style={s.analysisLabel}>Elbow Angle by Frame</span>
+              <span style={s.analysisLabel}>Angles by Shot</span>
             </div>
             <div style={s.chartContainer}>
-              <canvas id="elbow-angle-chart" ref={chartRef} width="400" height="200" />
+              <canvas id="angles-chart" ref={chartRef} width="400" height="200" />
             </div>
           </section>
         )}
@@ -411,16 +451,16 @@ function getConsistencyLabel(score) {
   return 'Needs Work';
 }
 
-function getReleaseTone(angle) {
+function getAngleTone(angle, minThreshold, maxThreshold) {
   if (angle == null) {
     return { label: 'N/A', color: '#6b7280' };
   }
 
-  if (angle >= 45 && angle <= 55) {
+  if (angle >= minThreshold && angle <= maxThreshold) {
     return { label: 'Ideal', color: '#16a34a' };
   }
 
-  if (angle >= 40 && angle <= 60) {
+  if (angle >= minThreshold - 5 && angle <= maxThreshold + 5) {
     return { label: 'Near ideal', color: '#d97706' };
   }
 
@@ -432,11 +472,6 @@ function renderElbowAngleChart(angleFrames, chartRef, chartInstance) {
     return;
   }
 
-  const COLORS = [
-    '#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6',
-    '#06b6d4', '#f97316', '#ec4899', '#14b8a6', '#a3e635',
-  ];
-
   // Group frames by shot_number
   const shotMap = {};
   angleFrames.forEach((frame) => {
@@ -447,35 +482,61 @@ function renderElbowAngleChart(angleFrames, chartRef, chartInstance) {
     shotMap[shotNum].push(frame);
   });
 
-  // Build datasets per shot
-  const datasets = [];
+  // Get shot numbers in order
   const shotNumbers = Object.keys(shotMap)
     .map(Number)
     .sort((a, b) => a - b);
-  const maxLength = Math.max(...shotNumbers.map((n) => shotMap[n].length));
 
-  shotNumbers.forEach((shotNum, idx) => {
+  // Calculate average SEW and ESH for each shot
+  const sewData = [];
+  const eshData = [];
+
+  shotNumbers.forEach((shotNum) => {
     const frames = shotMap[shotNum];
-    const color = COLORS[idx % COLORS.length];
-    const data = frames.map((f) => f.elbow_angle);
+    
+    // Average SEW angle (elbow_angle)
+    const sewValues = frames.filter(f => f.elbow_angle != null).map(f => f.elbow_angle);
+    const sewAvg = sewValues.length > 0 ? sewValues.reduce((a, b) => a + b, 0) / sewValues.length : null;
+    sewData.push(sewAvg);
 
-    datasets.push({
-      label: `Shot ${shotNum}`,
-      data,
-      borderColor: color,
-      backgroundColor: `${color}08`,
+    // Average ESH angle (shoulder_angle)
+    const eshValues = frames.filter(f => f.shoulder_angle != null).map(f => f.shoulder_angle);
+    const eshAvg = eshValues.length > 0 ? eshValues.reduce((a, b) => a + b, 0) / eshValues.length : null;
+    eshData.push(eshAvg);
+  });
+
+  // Create datasets: one for SEW, one for ESH
+  const datasets = [
+    {
+      label: 'SEW Angle (65–75°)',
+      data: sewData,
+      borderColor: '#3b82f6',
+      backgroundColor: '#3b82f608',
       borderWidth: 2.5,
       tension: 0.3,
       spanGaps: true,
-      pointRadius: 3,
-      pointBackgroundColor: color,
+      pointRadius: 4,
+      pointBackgroundColor: '#3b82f6',
       pointBorderColor: '#fff',
       pointBorderWidth: 1.5,
-    });
-  });
+    },
+    {
+      label: 'ESH Angle (120–135°)',
+      data: eshData,
+      borderColor: '#f59e0b',
+      backgroundColor: '#f59e0b08',
+      borderWidth: 2.5,
+      tension: 0.3,
+      spanGaps: true,
+      pointRadius: 4,
+      pointBackgroundColor: '#f59e0b',
+      pointBorderColor: '#fff',
+      pointBorderWidth: 1.5,
+    },
+  ];
 
-  // Generate x-axis labels
-  const xLabels = Array.from({ length: maxLength }, (_, i) => `Frame ${i + 1}`);
+  // Generate x-axis labels (shot numbers)
+  const xLabels = shotNumbers.map((n) => `Shot ${n}`);
 
   const ctx = chartRef.current.getContext('2d');
   
@@ -503,26 +564,12 @@ function renderElbowAngleChart(angleFrames, chartRef, chartInstance) {
             color: '#374151',
           },
         },
-        annotation: {
-          annotations: {
-            releaseZone: {
-              type: 'box',
-              xMin: -0.5,
-              xMax: maxLength - 0.5,
-              yMin: 85,
-              yMax: 100,
-              backgroundColor: 'rgba(34, 197, 94, 0.15)',
-              borderColor: 'rgba(34, 197, 94, 0.4)',
-              borderWidth: 1.5,
-            },
-          },
-        },
       },
       scales: {
         x: {
           title: {
             display: true,
-            text: 'Frame',
+            text: 'Shot Number',
             font: { size: 13, weight: 600 },
             color: '#111827',
           },
@@ -537,11 +584,11 @@ function renderElbowAngleChart(angleFrames, chartRef, chartInstance) {
         y: {
           title: {
             display: true,
-            text: 'Elbow Angle (°)',
+            text: 'Angle (°)',
             font: { size: 13, weight: 600 },
             color: '#111827',
           },
-          min: 60,
+          min: 50,
           max: 180,
           ticks: {
             font: { size: 11 },
@@ -623,6 +670,9 @@ const s = {
     borderRadius: 12,
     padding: '1rem 1.1rem',
     background: 'linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%)',
+  },
+  consistencyBlockFull: {
+    gridColumn: '1 / -1',
   },
   analysisHeader: {
     display: 'flex',

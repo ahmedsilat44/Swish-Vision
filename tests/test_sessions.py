@@ -325,7 +325,7 @@ class TestSessions:
         assert body["shot_percentage"] == 66.7
         assert body["shots_made"] == 2
         assert body["shots_missed"] == 1
-        assert body["avg_release_angle"] == 47.0
+        assert body["avg_esh_angle"] == 47.0
         assert body["feedback_text"] == "solid form"
 
     def test_get_shots_and_angles_are_ordered(self, client, db_session):

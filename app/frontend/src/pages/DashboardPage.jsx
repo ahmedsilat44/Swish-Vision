@@ -95,7 +95,6 @@ export default function DashboardPage() {
     });
   };
 
-function AppShell() {
   return (
     <div
       style={{
@@ -564,6 +563,7 @@ function renderTrendChart(trendData, chartRef, trendChartInstance) {
     },
   });
 }
+
 function StatCard({ label, value }) {
   return (
     <div

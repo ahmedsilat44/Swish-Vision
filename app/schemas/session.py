@@ -20,7 +20,6 @@ class SessionListResponse(BaseModel):
     original_filename: str
     status: str
     created_at: datetime
-    shot_percentage: Optional[float] = None
 
     model_config = ConfigDict(from_attributes=True)
 

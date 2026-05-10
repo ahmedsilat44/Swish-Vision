@@ -10,13 +10,17 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
-        response.headers["Content-Security-Policy"] = (
-            "default-src 'self'; "
-            "script-src 'self' https://cdnjs.cloudflare.com; "
-            "style-src 'self' 'unsafe-inline'; "
-            "img-src 'self' data:; "
-            "media-src 'self';"
-        )
+
+        docs_paths = {"/docs", "/redoc", "/openapi.json"}
+        if request.url.path not in docs_paths:
+            response.headers["Content-Security-Policy"] = (
+                "default-src 'self'; "
+                "script-src 'self' https://cdnjs.cloudflare.com; "
+                "style-src 'self' 'unsafe-inline'; "
+                "img-src 'self' data:; "
+                "media-src 'self';"
+            )
+
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         if settings.ENV == "production":

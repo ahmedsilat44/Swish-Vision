@@ -5,6 +5,23 @@ import Tooltip from "../components/Tooltip";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
 
+async function retrySession(sessionId, setSessions, token, setError) {
+  const res = await fetch(`${API_URL}/sessions/${sessionId}/retry`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    setError(body.detail || "Failed to retry session.");
+    return;
+  }
+
+  setSessions((prev) =>
+    prev.map((s) => (s.id === sessionId ? { ...s, ...body } : s))
+  );
+}
+
 async function deleteSession(sessionId, setSessions, token, setError) {
   if (!window.confirm("Delete this session? This cannot be undone.")) return;
 
@@ -139,6 +156,7 @@ export default function SessionsPage() {
                     ? session.shot_percentage.toFixed(1) + "%"
                     : "—";
                 const isProcessing = session.status === "processing";
+                const isFailed = session.status === "failed";
 
                 return (
                   <tr key={session.id} style={s.row}>
@@ -150,26 +168,39 @@ export default function SessionsPage() {
                         {session.original_filename}
                       </Link>
                     </td>
-                    <td style={s.td}>{totalShots || "—"}</td>
+                    <td style={s.td}>{totalShots ?? "—"}</td>
                     <td style={s.td}>{madePercent}</td>
                     <td style={s.td}>—</td>
                     <td style={s.td}>
                       <StatusBadge status={session.status} />
                     </td>
                     <td style={s.td}>
-                      <button
-                        disabled={isProcessing}
-                        title={isProcessing ? "Cannot delete while processing" : "Delete session"}
-                        onClick={() =>
-                          deleteSession(session.id, setSessions, token, setError)
-                        }
-                        style={{
-                          ...s.deleteBtn,
-                          ...(isProcessing ? s.deleteBtnDisabled : {}),
-                        }}
-                      >
-                        Delete
-                      </button>
+                      <div style={{ display: "flex", gap: "0.4rem" }}>
+                        {isFailed && (
+                          <button
+                            title="Retry processing"
+                            onClick={() =>
+                              retrySession(session.id, setSessions, token, setError)
+                            }
+                            style={s.retryBtn}
+                          >
+                            Retry
+                          </button>
+                        )}
+                        <button
+                          disabled={isProcessing}
+                          title={isProcessing ? "Cannot delete while processing" : "Delete session"}
+                          onClick={() =>
+                            deleteSession(session.id, setSessions, token, setError)
+                          }
+                          style={{
+                            ...s.deleteBtn,
+                            ...(isProcessing ? s.deleteBtnDisabled : {}),
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -261,6 +292,16 @@ const s = {
     color: "#3b82f6",
     textDecoration: "none",
     fontWeight: 500,
+  },
+  retryBtn: {
+    padding: "0.35rem 0.8rem",
+    borderRadius: 6,
+    border: "1px solid #bfdbfe",
+    background: "#dbeafe",
+    color: "#1d4ed8",
+    cursor: "pointer",
+    fontSize: "0.8rem",
+    fontFamily: "inherit",
   },
   deleteBtn: {
     padding: "0.35rem 0.8rem",

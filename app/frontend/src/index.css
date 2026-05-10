@@ -16,12 +16,32 @@ code {
 .tooltip-wrap {
   position: relative;
   display: inline-block;
+}
+.tooltip-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin: 0 0 0 4px;
   cursor: help;
+  color: inherit;
+  font: inherit;
+  line-height: 1;
+}
+.tooltip-trigger:focus {
+  outline: none;
+}
+.tooltip-trigger:focus-visible {
+  outline: 2px solid #ff9a00;
+  outline-offset: 2px;
+  border-radius: 3px;
 }
 .tooltip-icon {
-  color: #6b7280;
+  color: currentColor;
+  opacity: 0.75;
   font-size: 0.85rem;
-  margin-left: 4px;
 }
 .tooltip-text {
   visibility: hidden;
@@ -42,7 +62,8 @@ code {
   pointer-events: none;
 }
 .tooltip-wrap:hover .tooltip-text,
-.tooltip-wrap:focus .tooltip-text {
+.tooltip-trigger:focus-visible + .tooltip-text,
+.tooltip-trigger:focus + .tooltip-text {
   visibility: visible;
   opacity: 1;
 }

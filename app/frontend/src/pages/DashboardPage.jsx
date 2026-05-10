@@ -1,9 +1,17 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../AuthContext";
-import Tooltip from "../components/Tooltip";
 
 const API_URL = (process.env.REACT_APP_API_URL || "http://localhost:8000").replace(/\/+$/, "");
+
+function apiFetch(path, options = {}) {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  const normalizedBase =
+    API_URL.endsWith("/api") && normalizedPath.startsWith("/api")
+      ? API_URL.slice(0, -4)
+      : API_URL;
+  return fetch(`${normalizedBase}${normalizedPath}`, options);
+}
 
 export default function DashboardPage() {
   const { token } = useAuth();
@@ -12,7 +20,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!token) return;
-    fetch(`${API_URL}/api/dashboard/summary`, {
+    apiFetch(`/api/dashboard/summary`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => r.ok ? r.json() : null)
@@ -73,7 +81,7 @@ export default function DashboardPage() {
             width: "100%",
             maxWidth: "640px",
             display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
+            gridTemplateColumns: "repeat(2, 1fr)",
             gap: "0.75rem",
             marginTop: "0.5rem",
           }}
@@ -85,18 +93,6 @@ export default function DashboardPage() {
           <StatCard
             label="Total Shots"
             value={summary.total_shots ?? "—"}
-          />
-          <StatCard
-            label={
-              <span>
-                Avg Consistency
-                <Tooltip
-                  text="A score from 0–100 measuring how uniform your shooting form is across all detected shots. Higher is more consistent."
-                  label="What is Consistency Score?"
-                />
-              </span>
-            }
-            value="—"
           />
         </div>
       )}
@@ -247,7 +243,7 @@ function StatCard({ label, value }) {
     >
       <p
         style={{
-          color: "#555",
+          color: "#aaa",
           fontSize: "0.7rem",
           letterSpacing: "1px",
           textTransform: "uppercase",

@@ -79,8 +79,8 @@ export default function SessionDetailPage() {
                 <th style={styles.th}>
                   Shoulder Angle
                   <Tooltip
-                    text="The angle of the ball's trajectory at the moment it leaves your hands. The ideal range is 45–55°."
-                    label="What is Release Angle?"
+                    text="The angle at your shooting shoulder at the point of release. Consistent values across shots indicate repeatable upper-body alignment."
+                    label="What is Shoulder Angle?"
                   />
                 </th>
                 <th style={styles.th}>Knee Angle</th>

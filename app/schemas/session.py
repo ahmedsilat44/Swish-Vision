@@ -81,10 +81,10 @@ class AngleFrameResponse(AngleFrameDetail):
 class DashboardSummaryResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     total_sessions: int
-    completed_sessions: int
     total_shots: int
     total_makes: int
     shot_percentage: Optional[float] = None
+    avg_consistency: Optional[float] = None
 
 
 class TrendPointResponse(BaseModel):

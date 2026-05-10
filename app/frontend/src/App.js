@@ -10,7 +10,6 @@ import UploadPage from "./pages/UploadPage";
 import ResultsPage from "./pages/ResultsPage";
 import SessionDetailPage from "./pages/SessionDetailPage";
 
-
 function ProtectedRoute({ children }) {
   const { token } = useAuth();
   return token ? children : <Navigate to="/login" replace />;

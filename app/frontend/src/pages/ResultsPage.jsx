@@ -1,28 +1,27 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, LineController } from 'chart.js';
+import annotationPlugin from 'chartjs-plugin-annotation';
 import { Doughnut } from 'react-chartjs-2';
 import './ResultsPage.css';
+import MetricTooltip from '../components/Tooltip';
 
-ChartJS.register(ArcElement, Tooltip, Legend);
+ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, LineController, annotationPlugin);
 
 const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:8000').replace(/\/+$/, '');
+const API_BASE = API_URL.endsWith('/api') ? API_URL.slice(0, -4) : API_URL;
 
 function apiFetch(path) {
   const token = localStorage.getItem('access_token');
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-  const normalizedBase =
-    API_URL.endsWith('/api') && normalizedPath.startsWith('/api')
-      ? API_URL.slice(0, -4)
-      : API_URL;
 
-  return fetch(`${normalizedBase}${normalizedPath}`, {
+  return fetch(`${API_BASE}${normalizedPath}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
 }
 
 export default function ResultsPage() {
-  const { id: sessionId } = useParams();
+  const { sessionId } = useParams();
   const navigate = useNavigate();
 
   // 'loading' | 'processing' | 'queued' | 'failed' | 'completed'
@@ -32,9 +31,23 @@ export default function ResultsPage() {
   const [shots, setShots] = useState([]);
   const [angleFrames, setAngleFrames] = useState([]);
   const [analysisReady, setAnalysisReady] = useState(false);
+  const [videoSrc, setVideoSrc] = useState(null);
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
   const pollTimer = useRef(null);
+
+  useEffect(() => {
+    if (pageState !== 'completed') return;
+    apiFetch(`/api/sessions/${sessionId}/video_token`)
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(data => {
+        setVideoSrc(`${API_BASE}/api/sessions/${sessionId}/output_video?video_token=${encodeURIComponent(data.video_token)}`);
+      })
+      .catch(() => {
+        // Fallback: if token endpoint fails the video section will remain empty
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pageState, sessionId]);
 
   useEffect(() => {
     if (pageState !== 'completed' || !report) {
@@ -47,9 +60,21 @@ export default function ResultsPage() {
   }, [pageState, report]);
 
   useEffect(() => {
-    if (angleFrames.length > 0 && chartRef.current) {
-      renderElbowAngleChart(angleFrames, chartRef);
+    if (chartInstance.current) {
+      chartInstance.current.destroy();
+      chartInstance.current = null;
     }
+
+    if (angleFrames.length > 0 && chartRef.current) {
+      renderElbowAngleChart(angleFrames, chartRef, chartInstance);
+    }
+
+    return () => {
+      if (chartInstance.current) {
+        chartInstance.current.destroy();
+        chartInstance.current = null;
+      }
+    };
   }, [angleFrames]);
 
   useEffect(() => {
@@ -164,8 +189,6 @@ export default function ResultsPage() {
   }
 
   // completed
-  const token = localStorage.getItem('access_token') || '';
-  const videoSrc = `${API_URL}/api/sessions/${sessionId}/output_video?token=${encodeURIComponent(token)}`;
   const shotPercentage = getNullableNumber(report?.shot_percentage);
   const shotsMade = Number(report?.shots_made) || 0;
   const shotsMissed = Number(report?.shots_missed) || 0;
@@ -218,8 +241,20 @@ export default function ResultsPage() {
                 <tr>
                   <th style={s.th}>#</th>
                   <th style={s.th}>Outcome</th>
-                  <th style={s.th}>Release Angle</th>
-                  <th style={s.th}>Elbow Angle</th>
+                  <th style={s.th}>
+                    Release Angle
+                    <MetricTooltip
+                      text="The angle of the ball's trajectory at the moment it leaves your hands. The ideal range is 45–55°."
+                      label="What is Release Angle?"
+                    />
+                  </th>
+                  <th style={s.th}>
+                    Elbow Angle
+                    <MetricTooltip
+                      text="The angle at your shooting elbow at the point of release. Consistent values across shots indicate repeatable form."
+                      label="What is Elbow Angle?"
+                    />
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -245,9 +280,13 @@ export default function ResultsPage() {
       {/* Annotated video player */}
       <div style={s.card}>
         <h3 style={s.cardTitle}>Annotated Video</h3>
-        <video controls width="100%" preload="metadata" style={s.video} src={videoSrc}>
-          Your browser does not support HTML5 video.
-        </video>
+        {videoSrc ? (
+          <video key={videoSrc} controls width="100%" preload="metadata" style={s.video} src={videoSrc}>
+            Your browser does not support HTML5 video.
+          </video>
+        ) : (
+          <p style={s.muted}>Preparing video…</p>
+        )}
       </div>
 
       <button style={s.backBtn} onClick={() => navigate('/upload')}>
@@ -388,7 +427,7 @@ function getReleaseTone(angle) {
   return { label: 'Outside range', color: '#dc2626' };
 }
 
-function renderElbowAngleChart(angleFrames, chartRef) {
+function renderElbowAngleChart(angleFrames, chartRef, chartInstance) {
   if (!angleFrames || angleFrames.length === 0 || !chartRef.current) {
     return;
   }
@@ -441,11 +480,11 @@ function renderElbowAngleChart(angleFrames, chartRef) {
   const ctx = chartRef.current.getContext('2d');
   
   // Destroy previous chart instance if it exists
-  if (window.elbow_angle_chart_instance) {
-    window.elbow_angle_chart_instance.destroy();
+  if (chartInstance.current) {
+    chartInstance.current.destroy();
   }
 
-  window.elbow_angle_chart_instance = new window.Chart(ctx, {
+  chartInstance.current = new ChartJS(ctx, {
     type: 'line',
     data: {
       labels: xLabels,

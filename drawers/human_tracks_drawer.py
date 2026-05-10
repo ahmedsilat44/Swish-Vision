@@ -272,6 +272,11 @@ class HumanTracksDrawer:
         with open(f"./reports/{file_name}", "w") as f:
             f.write("")
 
+        if not leave_frames:
+            with open(f"./reports/{file_name}", "w") as f:
+                f.write("No shots detected in this video.\n")
+            return frames, []
+
         lookback_frames=3
         # shoulder-elbow-wrist
         sew_min_thresh = 65

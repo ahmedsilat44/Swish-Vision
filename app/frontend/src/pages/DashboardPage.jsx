@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
+import { Chart as ChartJS } from "chart.js/auto";
 import { useAuth } from "../AuthContext";
 
 const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:8000').replace(/\/+$/, '');
@@ -26,6 +27,7 @@ export default function DashboardPage() {
   const [trendDataLoaded, setTrendDataLoaded] = useState(false);
   const [gridColumns, setGridColumns] = useState("repeat(3, 1fr)");
   const chartRef = useRef(null);
+  const trendChartInstance = useRef(null);
 
   useEffect(() => {
     fetchSummaryStats();
@@ -60,19 +62,51 @@ export default function DashboardPage() {
       if (res.ok) {
         const data = await res.json();
         setTrendData(data);
+    async function loadTrendData() {
+      try {
+        const res = await apiFetch('/api/dashboard/trends');
+        if (res.ok) {
+          const data = await res.json();
+          setTrendData(data);
+        }
+      } catch (err) {
+        console.error('Failed to load trend data:', err);
+      } finally {
+        setTrendDataLoaded(true);
       }
-    } catch (err) {
-      console.error('Failed to load trend data:', err);
-    } finally {
-      setTrendDataLoaded(true);
     }
-  }
+
+    loadTrendData();
+  }, []);
 
   useEffect(() => {
     if (trendDataLoaded && trendData.length >= 2 && chartRef.current) {
-      renderTrendChart(trendData, chartRef);
+      renderTrendChart(trendData, chartRef, trendChartInstance);
+    } else if (trendChartInstance.current) {
+      trendChartInstance.current.destroy();
+      trendChartInstance.current = null;
     }
   }, [trendDataLoaded, trendData]);
+  const [summary, setSummary] = useState(null);
+
+  useEffect(() => {
+    if (!token) return;
+    apiFetch(`/api/dashboard/summary`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => setSummary(data))
+      .catch(() => {});
+  }, [token]);
+
+  useEffect(() => {
+    return () => {
+      if (trendChartInstance.current) {
+        trendChartInstance.current.destroy();
+        trendChartInstance.current = null;
+      }
+    };
+  }, []);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(token).then(() => {
@@ -254,6 +288,20 @@ export default function DashboardPage() {
               Upload your first session to start tracking your progress.
             </p>
           )}
+            display: "grid",
+            gridTemplateColumns: "repeat(2, 1fr)",
+            gap: "0.75rem",
+            marginTop: "0.5rem",
+          }}
+        >
+          <StatCard
+            label="Shot %"
+            value={summary.shot_percentage != null ? `${summary.shot_percentage.toFixed(1)}%` : "—"}
+          />
+          <StatCard
+            label="Total Shots"
+            value={summary.total_shots ?? "—"}
+          />
         </div>
       )}
 
@@ -440,7 +488,7 @@ export default function DashboardPage() {
   );
 }
 
-function renderTrendChart(trendData, chartRef) {
+function renderTrendChart(trendData, chartRef, trendChartInstance) {
   if (!trendData || trendData.length < 2 || !chartRef.current) {
     return;
   }
@@ -461,11 +509,11 @@ function renderTrendChart(trendData, chartRef) {
   const ctx = chartRef.current.getContext('2d');
 
   // Destroy previous chart instance if it exists
-  if (window.trend_chart_instance) {
-    window.trend_chart_instance.destroy();
+  if (trendChartInstance.current) {
+    trendChartInstance.current.destroy();
   }
 
-  window.trend_chart_instance = new window.Chart(ctx, {
+  trendChartInstance.current = new ChartJS(ctx, {
     type: 'line',
     data: {
       labels,
@@ -548,4 +596,32 @@ function renderTrendChart(trendData, chartRef) {
       },
     },
   });
+}
+function StatCard({ label, value }) {
+  return (
+    <div
+      style={{
+        background: "#13131a",
+        border: "1px solid #1e1e2e",
+        borderRadius: "12px",
+        padding: "1rem",
+        textAlign: "center",
+      }}
+    >
+      <p
+        style={{
+          color: "#aaa",
+          fontSize: "0.7rem",
+          letterSpacing: "1px",
+          textTransform: "uppercase",
+          margin: "0 0 0.4rem",
+        }}
+      >
+        {label}
+      </p>
+      <p style={{ color: "#ff9a00", fontSize: "1.4rem", fontWeight: 700, margin: 0 }}>
+        {value}
+      </p>
+    </div>
+  );
 }

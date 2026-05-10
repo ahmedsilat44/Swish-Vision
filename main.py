@@ -149,7 +149,7 @@ def main_pipeline(input_path):
     print("Making video...")
 
    # write_video(four_out_video_frames, f"output_videos/output_{vidname}_second_angle.avi", fps=fps)
-    write_video(five_out_video_frames, f"output_videos/output_{vidname}_processed.avi", fps=fps)
+    write_video(five_out_video_frames, f"output_videos/output_{vidname}_processed.mp4", fps=fps)
     print("Video saved!")
     data = {"shot_angles": shot_angles, "shot_strt": shot_starts, "shot_end": ball_left_frames, "order_shots": order_shots, "total_shots": total_shots, "made_shots": made_shots, "missed_shots": missed_shots}
     return data
@@ -185,7 +185,7 @@ def run_pipeline(input_path: str, session_id: int = None) -> tuple[str, str, dic
     """
     vidname = os.path.splitext(os.path.basename(input_path))[0]
     pipeline_data = main_pipeline(input_path)
-    output_path = os.path.join("output_videos", f"output_{vidname}_processed.avi")
+    output_path = os.path.join("output_videos", f"output_{vidname}_processed.mp4")
     report_path = os.path.join("reports", f"{vidname}_report.txt")
     return output_path, report_path, pipeline_data
 

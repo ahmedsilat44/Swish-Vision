@@ -20,6 +20,10 @@ class SessionListResponse(BaseModel):
     original_filename: str
     status: str
     created_at: datetime
+    shot_percentage: Optional[float] = None
+    shots_made: Optional[int] = None
+    shots_missed: Optional[int] = None
+    total_shots: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 

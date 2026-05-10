@@ -207,6 +207,7 @@ export default function ResultsPage() {
 
   return (
     <div style={s.page}>
+      <div style={s.pageInner}>
       {renderFormAnalysis(report, analysisReady, angleFrames, chartRef, sessionId)}
 
       {/* Hero stat */}
@@ -266,8 +267,8 @@ export default function ResultsPage() {
                       <td style={{ ...s.td, color: outcome === 'made' ? '#22c55e' : '#ef4444', fontWeight: 600 }}>
                         {outcome}
                       </td>
-                      <td style={s.td}>{shot.sew_angle != null ? `${shot.sew_angle.toFixed(1)}°` : '—'}</td>
-                      <td style={s.td}>{shot.esh_angle != null ? `${shot.esh_angle.toFixed(1)}°` : '—'}</td>
+                      <td style={s.td}>{shot.elbow_angle_at_release != null ? `${shot.elbow_angle_at_release.toFixed(1)}°` : (shot.sew_angle != null ? `${shot.sew_angle.toFixed(1)}°` : '—')}</td>
+                      <td style={s.td}>{shot.release_angle != null ? `${shot.release_angle.toFixed(1)}°` : (shot.esh_angle != null ? `${shot.esh_angle.toFixed(1)}°` : '—')}</td>
                     </tr>
                   );
                 })}
@@ -292,6 +293,7 @@ export default function ResultsPage() {
       <button style={s.backBtn} onClick={() => navigate('/upload')}>
         ← Upload another video
       </button>
+      </div>
     </div>
   );
 }
@@ -342,7 +344,7 @@ function renderFormAnalysis(report, animate, angleFrames, chartRef, sessionId) {
               {avgSewAngle != null ? `${avgSewAngle.toFixed(1)}°` : 'N/A'}
             </div>
             <div style={s.angleBandWrap} aria-label="SEW angle reference band">
-              <div style={s.angleScale}>
+              <div style={{ ...s.angleScale, background: getAngleGradient(65, 75) }}>
                 <div
                   style={{
                     ...s.angleIdealBand,
@@ -380,7 +382,7 @@ function renderFormAnalysis(report, animate, angleFrames, chartRef, sessionId) {
               {avgEshAngle != null ? `${avgEshAngle.toFixed(1)}°` : 'N/A'}
             </div>
             <div style={s.angleBandWrap} aria-label="ESH angle reference band">
-              <div style={s.angleScale}>
+              <div style={{ ...s.angleScale, background: getAngleGradient(120, 135) }}>
                 <div
                   style={{
                     ...s.angleIdealBand,
@@ -466,7 +468,20 @@ function getAngleTone(angle, minThreshold, maxThreshold) {
 
   return { label: 'Outside range', color: '#dc2626' };
 }
-
+function getAngleGradient(minIdeal, maxIdeal) {
+  // Calculate percentages for the ideal range (out of 0-180°)
+  const minPercent = (minIdeal / 180) * 100;
+  const maxPercent = (maxIdeal / 180) * 100;
+  const midPercent = (minPercent + maxPercent) / 2;
+  
+  // Create a smooth gradient: red -> yellow -> green (at mid) -> yellow -> red
+  return `linear-gradient(90deg, 
+    rgba(239,68,68,0.4) 0%, 
+    rgba(251,146,60,0.4) ${minPercent - 5}%, 
+    rgba(34,197,94,0.4) ${midPercent}%, 
+    rgba(251,146,60,0.4) ${maxPercent + 5}%, 
+    rgba(239,68,68,0.4) 100%)`;
+}
 function renderElbowAngleChart(angleFrames, chartRef, chartInstance) {
   if (!angleFrames || angleFrames.length === 0 || !chartRef.current) {
     return;
@@ -561,7 +576,7 @@ function renderElbowAngleChart(angleFrames, chartRef, chartInstance) {
             usePointStyle: true,
             padding: 15,
             font: { size: 12, weight: 500 },
-            color: '#374151',
+            color: '#ccc',
           },
         },
       },
@@ -571,14 +586,14 @@ function renderElbowAngleChart(angleFrames, chartRef, chartInstance) {
             display: true,
             text: 'Shot Number',
             font: { size: 13, weight: 600 },
-            color: '#111827',
+            color: '#fff',
           },
           ticks: {
             font: { size: 11 },
-            color: '#6b7280',
+            color: '#888',
           },
           grid: {
-            color: 'rgba(107, 114, 128, 0.1)',
+            color: 'rgba(30, 30, 46, 0.5)',
           },
         },
         y: {
@@ -586,17 +601,17 @@ function renderElbowAngleChart(angleFrames, chartRef, chartInstance) {
             display: true,
             text: 'Angle (°)',
             font: { size: 13, weight: 600 },
-            color: '#111827',
+            color: '#fff',
           },
           min: 50,
           max: 180,
           ticks: {
             font: { size: 11 },
-            color: '#6b7280',
+            color: '#888',
             stepSize: 20,
           },
           grid: {
-            color: 'rgba(107, 114, 128, 0.1)',
+            color: 'rgba(30, 30, 46, 0.5)',
           },
         },
       },
@@ -614,28 +629,41 @@ function CenteredCard({ children }) {
 
 const s = {
   page: {
-    maxWidth: 760,
-    margin: '0 auto',
-    padding: '2rem 1rem',
+    minHeight: 'calc(100vh - 56px)',
+    background: '#0a0a0f',
+    color: '#fff',
+    width: '100%',
     display: 'flex',
     flexDirection: 'column',
     gap: '1.5rem',
-    fontFamily: "'DM Sans', system-ui, sans-serif",
+    fontFamily: "'DM Sans', sans-serif",
+  },
+  pageInner: {
+    maxWidth: 760,
+    margin: '0 auto',
+    padding: '2rem 1rem',
+    width: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1.5rem',
   },
   centered: {
     minHeight: '70vh',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    background: '#0a0a0f',
   },
   card: {
-    background: '#fff',
+    background: '#13131a',
+    border: '1px solid #1e1e2e',
     borderRadius: 12,
     padding: '1.5rem',
-    boxShadow: '0 2px 12px rgba(0,0,0,0.07)',
+    boxShadow: 'none',
   },
   heroCard: {
-    background: '#1a1a2e',
+    background: '#13131a',
+    border: '1px solid #1e1e2e',
     color: '#fff',
     borderRadius: 12,
     padding: '2rem',
@@ -666,10 +694,10 @@ const s = {
     gap: '1rem',
   },
   analysisBlock: {
-    border: '1px solid #e5e7eb',
+    border: '1px solid #1e1e2e',
     borderRadius: 12,
     padding: '1rem 1.1rem',
-    background: 'linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%)',
+    background: '#0d0d14',
   },
   consistencyBlockFull: {
     gridColumn: '1 / -1',
@@ -684,12 +712,12 @@ const s = {
   analysisLabel: {
     fontSize: '0.95rem',
     fontWeight: 700,
-    color: '#111827',
+    color: '#fff',
   },
   analysisMeta: {
     fontSize: '0.8rem',
     fontWeight: 700,
-    color: '#6b7280',
+    color: '#888',
     textTransform: 'uppercase',
     letterSpacing: '0.08em',
   },
@@ -703,7 +731,7 @@ const s = {
     fontSize: '2.1rem',
     fontWeight: 800,
     lineHeight: 1,
-    color: '#111827',
+    color: '#fff',
     minWidth: 88,
   },
   scoreBarWrap: {
@@ -715,8 +743,8 @@ const s = {
     height: 16,
     borderRadius: 999,
     overflow: 'hidden',
-    background: '#e5e7eb',
-    boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.08)',
+    background: '#1e1e2e',
+    boxShadow: 'none',
   },
   scoreBarFillContainer: {
     position: 'absolute',
@@ -731,7 +759,7 @@ const s = {
   analysisHint: {
     margin: '0.75rem 0 0',
     fontSize: '0.82rem',
-    color: '#6b7280',
+    color: '#888',
   },
   angleValueRow: {
     display: 'grid',
@@ -741,6 +769,7 @@ const s = {
     fontSize: '2rem',
     fontWeight: 800,
     lineHeight: 1,
+    color: '#fff',
   },
   angleBandWrap: {
     display: 'grid',
@@ -750,7 +779,7 @@ const s = {
     position: 'relative',
     height: 18,
     borderRadius: 999,
-    background: 'linear-gradient(90deg, #fee2e2 0%, #fef3c7 35%, #dcfce7 100%)',
+    background: 'linear-gradient(90deg, rgba(239,68,68,0.4) 0%, rgba(34,197,94,0.4) 50%, rgba(239,68,68,0.4) 100%)',
     overflow: 'hidden',
   },
   angleIdealBand: {
@@ -758,15 +787,15 @@ const s = {
     top: 2,
     bottom: 2,
     borderRadius: 999,
-    background: 'rgba(34, 197, 94, 0.28)',
-    border: '1px solid rgba(34, 197, 94, 0.55)',
+    background: 'rgba(34, 197, 94, 0.4)',
+    border: '1px solid rgba(74, 222, 128, 0.8)',
   },
   angleMarkerRail: {
     position: 'absolute',
     inset: '50% 0 auto 0',
     height: 2,
     transform: 'translateY(-50%)',
-    background: 'rgba(17, 24, 39, 0.12)',
+    background: 'rgba(255, 255, 255, 0.12)',
   },
   angleMarker: {
     position: 'absolute',
@@ -775,8 +804,8 @@ const s = {
     height: 14,
     borderRadius: '50%',
     transform: 'translate(-50%, -50%)',
-    background: '#111827',
-    boxShadow: '0 0 0 4px rgba(17, 24, 39, 0.14)',
+    background: '#60a5fa',
+    boxShadow: '0 0 0 4px rgba(96, 165, 250, 0.2)',
     transition: 'left 800ms cubic-bezier(0.22, 1, 0.36, 1), opacity 250ms ease',
   },
   angleScaleLabels: {
@@ -784,14 +813,14 @@ const s = {
     justifyContent: 'space-between',
     gap: '0.75rem',
     fontSize: '0.78rem',
-    color: '#6b7280',
+    color: '#888',
   },
   feedbackBlock: {
     gridColumn: '1 / -1',
   },
   feedbackText: {
     margin: 0,
-    color: '#374151',
+    color: '#ccc',
     fontSize: '0.95rem',
     lineHeight: 1.6,
     whiteSpace: 'pre-wrap',
@@ -812,7 +841,7 @@ const s = {
     margin: '0 0 1rem',
     fontSize: '1rem',
     fontWeight: 700,
-    color: '#1a1a2e',
+    color: '#fff',
   },
   table: {
     width: '100%',
@@ -822,52 +851,52 @@ const s = {
   th: {
     padding: '0.6rem 0.75rem',
     textAlign: 'left',
-    background: '#f8f9fa',
-    color: '#555',
+    background: '#0d0d14',
+    color: '#fff',
     fontWeight: 600,
-    borderBottom: '2px solid #e9ecef',
+    borderBottom: '1px solid #1e1e2e',
     whiteSpace: 'nowrap',
   },
   td: {
     padding: '0.6rem 0.75rem',
-    borderBottom: '1px solid #f0f0f0',
-    color: '#333',
+    borderBottom: '1px solid #1e1e2e',
+    color: '#ccc',
   },
   spinner: {
     width: 48,
     height: 48,
-    border: '5px solid #e5e7eb',
-    borderTopColor: '#3b82f6',
+    border: '5px solid #1e1e2e',
+    borderTopColor: '#60a5fa',
     borderRadius: '50%',
     animation: 'spin 0.8s linear infinite',
     margin: '0 auto 1.25rem',
   },
   processingText: {
-    color: '#555',
+    color: '#aaa',
     fontSize: '0.95rem',
     margin: 0,
   },
   failedBanner: {
-    background: '#fef2f2',
-    border: '1px solid #fecaca',
+    background: 'rgba(239, 68, 68, 0.15)',
+    border: '1px solid #ef4444',
     borderRadius: 8,
     padding: '1rem 1.25rem',
     marginBottom: '1rem',
-    color: '#b91c1c',
+    color: '#f87171',
     textAlign: 'left',
   },
   errorDetail: {
     margin: '0.5rem 0 0',
     fontSize: '0.875rem',
-    color: '#dc2626',
+    color: '#f87171',
   },
   backBtn: {
     background: 'none',
-    border: '1px solid #d1d5db',
+    border: '1px solid #333',
     borderRadius: 8,
     padding: '0.6rem 1.25rem',
     cursor: 'pointer',
-    color: '#555',
+    color: '#aaa',
     fontSize: '0.875rem',
     marginTop: '0.75rem',
     alignSelf: 'flex-start',

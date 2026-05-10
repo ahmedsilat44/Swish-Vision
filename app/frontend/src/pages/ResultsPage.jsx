@@ -30,7 +30,10 @@ export default function ResultsPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [report, setReport] = useState(null);
   const [shots, setShots] = useState([]);
+  const [angleFrames, setAngleFrames] = useState([]);
   const [analysisReady, setAnalysisReady] = useState(false);
+  const chartRef = useRef(null);
+  const chartInstance = useRef(null);
   const pollTimer = useRef(null);
 
   useEffect(() => {
@@ -42,6 +45,12 @@ export default function ResultsPage() {
     const animationFrame = window.requestAnimationFrame(() => setAnalysisReady(true));
     return () => window.cancelAnimationFrame(animationFrame);
   }, [pageState, report]);
+
+  useEffect(() => {
+    if (angleFrames.length > 0 && chartRef.current) {
+      renderElbowAngleChart(angleFrames, chartRef);
+    }
+  }, [angleFrames]);
 
   useEffect(() => {
     loadSession();
@@ -101,9 +110,10 @@ export default function ResultsPage() {
 
   async function loadAnalytics() {
     try {
-      const [reportRes, shotsRes] = await Promise.all([
+      const [reportRes, shotsRes, anglesRes] = await Promise.all([
         apiFetch(`/api/sessions/${sessionId}/report`),
         apiFetch(`/api/sessions/${sessionId}/shots`),
+        apiFetch(`/api/sessions/${sessionId}/angles`),
       ]);
       if (!reportRes.ok || !shotsRes.ok) {
         setPageState('failed');
@@ -112,8 +122,10 @@ export default function ResultsPage() {
       }
       const reportData = await reportRes.json();
       const shotsData = await shotsRes.json();
+      const anglesData = anglesRes.ok ? await anglesRes.json() : { frames: [] };
       setReport(reportData);
       setShots(shotsData.shots);
+      setAngleFrames(anglesData.frames || []);
       setPageState('completed');
     } catch {
       setPageState('failed');
@@ -172,7 +184,7 @@ export default function ResultsPage() {
 
   return (
     <div style={s.page}>
-      {renderFormAnalysis(report, analysisReady)}
+      {renderFormAnalysis(report, analysisReady, angleFrames, chartRef, sessionId)}
 
       {/* Hero stat */}
       <div style={s.heroCard}>
@@ -245,7 +257,7 @@ export default function ResultsPage() {
   );
 }
 
-function renderFormAnalysis(report, animate) {
+function renderFormAnalysis(report, animate, angleFrames, chartRef, sessionId) {
   const consistencyScore = getNullableNumber(report?.shot_percentage);
   const avgReleaseAngle = getNullableNumber(report?.avg_release_angle);
   const feedbackText = normalizeFeedbackText(report?.feedback_text);
@@ -323,6 +335,17 @@ function renderFormAnalysis(report, animate) {
           </div>
           <p style={s.feedbackText}>{feedbackText}</p>
         </section>
+
+        {angleFrames.length > 0 && (
+          <section style={{ ...s.analysisBlock, ...s.chartBlock }}>
+            <div style={s.analysisHeader}>
+              <span style={s.analysisLabel}>Elbow Angle by Frame</span>
+            </div>
+            <div style={s.chartContainer}>
+              <canvas id="elbow-angle-chart" ref={chartRef} width="400" height="200" />
+            </div>
+          </section>
+        )}
       </div>
     </div>
   );
@@ -363,6 +386,136 @@ function getReleaseTone(angle) {
   }
 
   return { label: 'Outside range', color: '#dc2626' };
+}
+
+function renderElbowAngleChart(angleFrames, chartRef) {
+  if (!angleFrames || angleFrames.length === 0 || !chartRef.current) {
+    return;
+  }
+
+  const COLORS = [
+    '#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6',
+    '#06b6d4', '#f97316', '#ec4899', '#14b8a6', '#a3e635',
+  ];
+
+  // Group frames by shot_number
+  const shotMap = {};
+  angleFrames.forEach((frame) => {
+    const shotNum = frame.shot_number;
+    if (!shotMap[shotNum]) {
+      shotMap[shotNum] = [];
+    }
+    shotMap[shotNum].push(frame);
+  });
+
+  // Build datasets per shot
+  const datasets = [];
+  const shotNumbers = Object.keys(shotMap)
+    .map(Number)
+    .sort((a, b) => a - b);
+  const maxLength = Math.max(...shotNumbers.map((n) => shotMap[n].length));
+
+  shotNumbers.forEach((shotNum, idx) => {
+    const frames = shotMap[shotNum];
+    const color = COLORS[idx % COLORS.length];
+    const data = frames.map((f) => f.elbow_angle);
+
+    datasets.push({
+      label: `Shot ${shotNum}`,
+      data,
+      borderColor: color,
+      backgroundColor: `${color}08`,
+      borderWidth: 2.5,
+      tension: 0.3,
+      spanGaps: true,
+      pointRadius: 3,
+      pointBackgroundColor: color,
+      pointBorderColor: '#fff',
+      pointBorderWidth: 1.5,
+    });
+  });
+
+  // Generate x-axis labels
+  const xLabels = Array.from({ length: maxLength }, (_, i) => `Frame ${i + 1}`);
+
+  const ctx = chartRef.current.getContext('2d');
+  
+  // Destroy previous chart instance if it exists
+  if (window.elbow_angle_chart_instance) {
+    window.elbow_angle_chart_instance.destroy();
+  }
+
+  window.elbow_angle_chart_instance = new window.Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: xLabels,
+      datasets,
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            usePointStyle: true,
+            padding: 15,
+            font: { size: 12, weight: 500 },
+            color: '#374151',
+          },
+        },
+        annotation: {
+          annotations: {
+            releaseZone: {
+              type: 'box',
+              xMin: -0.5,
+              xMax: maxLength - 0.5,
+              yMin: 85,
+              yMax: 100,
+              backgroundColor: 'rgba(34, 197, 94, 0.15)',
+              borderColor: 'rgba(34, 197, 94, 0.4)',
+              borderWidth: 1.5,
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          title: {
+            display: true,
+            text: 'Frame',
+            font: { size: 13, weight: 600 },
+            color: '#111827',
+          },
+          ticks: {
+            font: { size: 11 },
+            color: '#6b7280',
+          },
+          grid: {
+            color: 'rgba(107, 114, 128, 0.1)',
+          },
+        },
+        y: {
+          title: {
+            display: true,
+            text: 'Elbow Angle (°)',
+            font: { size: 13, weight: 600 },
+            color: '#111827',
+          },
+          min: 60,
+          max: 180,
+          ticks: {
+            font: { size: 11 },
+            color: '#6b7280',
+            stepSize: 20,
+          },
+          grid: {
+            color: 'rgba(107, 114, 128, 0.1)',
+          },
+        },
+      },
+    },
+  });
 }
 
 function CenteredCard({ children }) {
@@ -553,6 +706,14 @@ const s = {
     fontSize: '0.95rem',
     lineHeight: 1.6,
     whiteSpace: 'pre-wrap',
+  },
+  chartBlock: {
+    gridColumn: '1 / -1',
+  },
+  chartContainer: {
+    position: 'relative',
+    width: '100%',
+    minHeight: 300,
   },
   chartWrap: {
     maxWidth: 280,

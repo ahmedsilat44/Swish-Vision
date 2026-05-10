@@ -128,7 +128,9 @@ export default function SessionsPage() {
                 const totalShots =
                   session.total_shots != null
                     ? session.total_shots
-                    : (session.shots_made ?? 0) + (session.shots_missed ?? 0);
+                    : session.shots_made != null || session.shots_missed != null
+                      ? (session.shots_made ?? 0) + (session.shots_missed ?? 0)
+                      : null;
                 const madePercent =
                   session.shot_percentage != null
                     ? session.shot_percentage.toFixed(1) + "%"
@@ -148,7 +150,7 @@ export default function SessionsPage() {
                         {session.original_filename}
                       </Link>
                     </td>
-                    <td style={s.td}>{totalShots || "—"}</td>
+                    <td style={s.td}>{totalShots ?? "—"}</td>
                     <td style={s.td}>{madePercent}</td>
                     <td style={s.td}>—</td>
                     <td style={s.td}>

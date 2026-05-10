@@ -80,6 +80,7 @@ export default function DashboardPage() {
     });
   };
 
+function AppShell() {
   return (
     <div
       style={{

@@ -25,22 +25,22 @@ export default function DashboardPage() {
   const chartRef = useRef(null);
 
   useEffect(() => {
-    fetchTrendData();
-  }, []);
-
-  async function fetchTrendData() {
-    try {
-      const res = await apiFetch('/api/dashboard/trends');
-      if (res.ok) {
-        const data = await res.json();
-        setTrendData(data);
+    async function loadTrendData() {
+      try {
+        const res = await apiFetch('/api/dashboard/trends');
+        if (res.ok) {
+          const data = await res.json();
+          setTrendData(data);
+        }
+      } catch (err) {
+        console.error('Failed to load trend data:', err);
+      } finally {
+        setTrendDataLoaded(true);
       }
-    } catch (err) {
-      console.error('Failed to load trend data:', err);
-    } finally {
-      setTrendDataLoaded(true);
     }
-  }
+
+    loadTrendData();
+  }, []);
 
   useEffect(() => {
     if (trendDataLoaded && trendData.length >= 2 && chartRef.current) {

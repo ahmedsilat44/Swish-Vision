@@ -164,9 +164,7 @@ export default function SessionsPage() {
                       {new Date(session.created_at).toLocaleDateString()}
                     </td>
                     <td style={s.td}>
-                      <Link to={`/results/${session.id}`} style={s.fileLink}>
-                        {session.original_filename}
-                      </Link>
+                      {session.original_filename}
                     </td>
                     <td style={s.td}>{totalShots ?? "—"}</td>
                     <td style={s.td}>{madePercent}</td>
@@ -176,6 +174,11 @@ export default function SessionsPage() {
                     </td>
                     <td style={s.td}>
                       <div style={{ display: "flex", gap: "0.4rem" }}>
+                        {session.status === "completed" && (
+                          <Link to={`/results/${session.id}`} style={s.resultsBtn}>
+                            Results
+                          </Link>
+                        )}
                         {isFailed && (
                           <button
                             title="Retry processing"
@@ -292,6 +295,18 @@ const s = {
     color: "#3b82f6",
     textDecoration: "none",
     fontWeight: 500,
+  },
+  resultsBtn: {
+    padding: "0.35rem 0.8rem",
+    borderRadius: 6,
+    border: "1px solid #bbf7d0",
+    background: "#dcfce7",
+    color: "#15803d",
+    cursor: "pointer",
+    fontSize: "0.8rem",
+    fontWeight: 600,
+    textDecoration: "none",
+    display: "inline-block",
   },
   retryBtn: {
     padding: "0.35rem 0.8rem",

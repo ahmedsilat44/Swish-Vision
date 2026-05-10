@@ -62,22 +62,13 @@ export default function DashboardPage() {
       if (res.ok) {
         const data = await res.json();
         setTrendData(data);
-    async function loadTrendData() {
-      try {
-        const res = await apiFetch('/api/dashboard/trends');
-        if (res.ok) {
-          const data = await res.json();
-          setTrendData(data);
-        }
-      } catch (err) {
-        console.error('Failed to load trend data:', err);
-      } finally {
-        setTrendDataLoaded(true);
       }
+    } catch (err) {
+      console.error('Failed to load trend data:', err);
+    } finally {
+      setTrendDataLoaded(true);
     }
-
-    loadTrendData();
-  }, []);
+  }
 
   useEffect(() => {
     if (trendDataLoaded && trendData.length >= 2 && chartRef.current) {
@@ -87,17 +78,6 @@ export default function DashboardPage() {
       trendChartInstance.current = null;
     }
   }, [trendDataLoaded, trendData]);
-  const [summary, setSummary] = useState(null);
-
-  useEffect(() => {
-    if (!token) return;
-    apiFetch(`/api/dashboard/summary`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => setSummary(data))
-      .catch(() => {});
-  }, [token]);
 
   useEffect(() => {
     return () => {
@@ -177,8 +157,8 @@ export default function DashboardPage() {
             {/* Total Sessions Card */}
             <div
               style={{
-                background: "#f9fafb",
-                border: "1px solid #e5e7eb",
+                background: "#13131a",
+                border: "1px solid #1e1e2e",
                 borderRadius: "12px",
                 padding: "1.25rem",
                 textAlign: "center",
@@ -189,7 +169,7 @@ export default function DashboardPage() {
                   display: "block",
                   fontSize: "2.5rem",
                   fontWeight: 700,
-                  color: "#1d4ed8",
+                  color: "#ff9a00",
                   lineHeight: 1.1,
                   marginBottom: "0.25rem",
                 }}
@@ -199,7 +179,7 @@ export default function DashboardPage() {
               <div
                 style={{
                   fontSize: "0.8rem",
-                  color: "#6b7280",
+                  color: "#aaa",
                   textTransform: "uppercase",
                   letterSpacing: "0.05em",
                   marginTop: "0.25rem",
@@ -212,8 +192,8 @@ export default function DashboardPage() {
             {/* Lifetime Shot % Card */}
             <div
               style={{
-                background: "#f9fafb",
-                border: "1px solid #e5e7eb",
+                background: "#13131a",
+                border: "1px solid #1e1e2e",
                 borderRadius: "12px",
                 padding: "1.25rem",
                 textAlign: "center",
@@ -224,7 +204,7 @@ export default function DashboardPage() {
                   display: "block",
                   fontSize: "2.5rem",
                   fontWeight: 700,
-                  color: "#1d4ed8",
+                  color: "#ff9a00",
                   lineHeight: 1.1,
                   marginBottom: "0.25rem",
                 }}
@@ -236,7 +216,7 @@ export default function DashboardPage() {
               <div
                 style={{
                   fontSize: "0.8rem",
-                  color: "#6b7280",
+                  color: "#aaa",
                   textTransform: "uppercase",
                   letterSpacing: "0.05em",
                   marginTop: "0.25rem",
@@ -249,8 +229,8 @@ export default function DashboardPage() {
             {/* Avg Consistency Card */}
             <div
               style={{
-                background: "#f9fafb",
-                border: "1px solid #e5e7eb",
+                background: "#13131a",
+                border: "1px solid #1e1e2e",
                 borderRadius: "12px",
                 padding: "1.25rem",
                 textAlign: "center",
@@ -261,7 +241,7 @@ export default function DashboardPage() {
                   display: "block",
                   fontSize: "2.5rem",
                   fontWeight: 700,
-                  color: "#1d4ed8",
+                  color: "#ff9a00",
                   lineHeight: 1.1,
                   marginBottom: "0.25rem",
                 }}
@@ -273,7 +253,7 @@ export default function DashboardPage() {
               <div
                 style={{
                   fontSize: "0.8rem",
-                  color: "#6b7280",
+                  color: "#aaa",
                   textTransform: "uppercase",
                   letterSpacing: "0.05em",
                   marginTop: "0.25rem",
@@ -288,20 +268,6 @@ export default function DashboardPage() {
               Upload your first session to start tracking your progress.
             </p>
           )}
-            display: "grid",
-            gridTemplateColumns: "repeat(2, 1fr)",
-            gap: "0.75rem",
-            marginTop: "0.5rem",
-          }}
-        >
-          <StatCard
-            label="Shot %"
-            value={summary.shot_percentage != null ? `${summary.shot_percentage.toFixed(1)}%` : "—"}
-          />
-          <StatCard
-            label="Total Shots"
-            value={summary.total_shots ?? "—"}
-          />
         </div>
       )}
 

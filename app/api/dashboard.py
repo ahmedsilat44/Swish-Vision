@@ -27,6 +27,7 @@ def dashboard_summary(
             func.coalesce(func.sum(Report.total_shots), 0).label("total_shots"),
             func.coalesce(func.sum(Report.makes), 0).label("total_makes"),
         )
+        .select_from(SessionModel)
         .outerjoin(Report, Report.session_id == SessionModel.id)
         .filter(
             SessionModel.user_id == current_user.id,

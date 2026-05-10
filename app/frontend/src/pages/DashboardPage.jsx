@@ -1,15 +1,15 @@
 import { Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "./AuthContext";
-import NavBar from "./NavBar";
-import { LoginPage } from "./pages/LoginPage";
-import RegisterPage from "./pages/RegisterPage";
-import DashboardPage from "./pages/DashboardPage";
-import { ShotsTable } from "./pages/ShotsTable";
-import SessionsPage from "./pages/SessionsPage";
-import UploadPage from "./pages/UploadPage";
-import ResultsPage from "./pages/ResultsPage";
-import SessionDetailPage from "./pages/SessionDetailPage";
-import HelpPage from "./pages/HelpPage";
+import { AuthProvider, useAuth } from "../AuthContext";
+import NavBar from "../NavBar";
+import { LoginPage } from "./LoginPage";
+import RegisterPage from "./RegisterPage";
+import DashboardPage from "./DashboardPage";
+import { ShotsTable } from "./ShotsTable";
+import SessionsPage from "./SessionsPage";
+import UploadPage from "./UploadPage";
+import ResultsPage from "./ResultsPage";
+import SessionDetailPage from "./SessionDetailPage";
+import HelpPage from "./HelpPage";
 
 function ProtectedRoute({ children }) {
   const { token } = useAuth();

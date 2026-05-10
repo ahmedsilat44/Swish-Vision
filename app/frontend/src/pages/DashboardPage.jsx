@@ -1,10 +1,77 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
+import { Chart as ChartJS } from "chart.js/auto";
 import { useAuth } from "../AuthContext";
+
+const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:8000').replace(/\/+$/, '');
+
+function apiFetch(path) {
+  const token = localStorage.getItem('access_token');
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const normalizedBase =
+    API_URL.endsWith('/api') && normalizedPath.startsWith('/api')
+      ? API_URL.slice(0, -4)
+      : API_URL;
+
+  return fetch(`${normalizedBase}${normalizedPath}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
 
 export default function DashboardPage() {
   const { token } = useAuth();
   const [copied, setCopied] = useState(false);
+  const [trendData, setTrendData] = useState([]);
+  const [trendDataLoaded, setTrendDataLoaded] = useState(false);
+  const chartRef = useRef(null);
+  const trendChartInstance = useRef(null);
+
+  useEffect(() => {
+    async function loadTrendData() {
+      try {
+        const res = await apiFetch('/api/dashboard/trends');
+        if (res.ok) {
+          const data = await res.json();
+          setTrendData(data);
+        }
+      } catch (err) {
+        console.error('Failed to load trend data:', err);
+      } finally {
+        setTrendDataLoaded(true);
+      }
+    }
+
+    loadTrendData();
+  }, []);
+
+  useEffect(() => {
+    if (trendDataLoaded && trendData.length >= 2 && chartRef.current) {
+      renderTrendChart(trendData, chartRef, trendChartInstance);
+    } else if (trendChartInstance.current) {
+      trendChartInstance.current.destroy();
+      trendChartInstance.current = null;
+    }
+  }, [trendDataLoaded, trendData]);
+  const [summary, setSummary] = useState(null);
+
+  useEffect(() => {
+    if (!token) return;
+    apiFetch(`/api/dashboard/summary`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => setSummary(data))
+      .catch(() => {});
+  }, [token]);
+
+  useEffect(() => {
+    return () => {
+      if (trendChartInstance.current) {
+        trendChartInstance.current.destroy();
+        trendChartInstance.current = null;
+      }
+    };
+  }, []);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(token).then(() => {
@@ -51,6 +118,29 @@ export default function DashboardPage() {
       <p style={{ color: "#555", margin: 0, fontSize: "0.9rem" }}>
         Use the navigation above or the shortcuts below.
       </p>
+
+      {/* Stats cards */}
+      {summary && (
+        <div
+          style={{
+            width: "100%",
+            maxWidth: "640px",
+            display: "grid",
+            gridTemplateColumns: "repeat(2, 1fr)",
+            gap: "0.75rem",
+            marginTop: "0.5rem",
+          }}
+        >
+          <StatCard
+            label="Shot %"
+            value={summary.shot_percentage != null ? `${summary.shot_percentage.toFixed(1)}%` : "—"}
+          />
+          <StatCard
+            label="Total Shots"
+            value={summary.total_shots ?? "—"}
+          />
+        </div>
+      )}
 
       {/* Bearer Token Box */}
       <div
@@ -116,6 +206,55 @@ export default function DashboardPage() {
         </p>
       </div>
 
+      {/* Trend Chart Section */}
+      {trendDataLoaded && (
+        <div
+          style={{
+            width: "100%",
+            maxWidth: "640px",
+            marginTop: "2rem",
+            background: "#13131a",
+            border: "1px solid #1e1e2e",
+            borderRadius: "14px",
+            padding: "1.25rem 1.5rem",
+          }}
+        >
+          <h2 style={{ fontSize: "1rem", fontWeight: 700, margin: "0 0 1rem", color: "#fff" }}>
+            Shot % Over Time
+          </h2>
+          {trendData.length >= 2 ? (
+            <div style={{ position: "relative", height: 300, width: "100%" }}>
+              <canvas id="trend-chart" ref={chartRef} />
+            </div>
+          ) : (
+            <div id="trend-empty" style={{ textAlign: "center", padding: "2rem 0" }}>
+              <p style={{ color: "#aaa", margin: "0 0 1rem", fontSize: "0.95rem" }}>
+                {trendData.length === 0
+                  ? "Complete your first session to see your progress over time."
+                  : "Complete more sessions to see your trend over time."}
+              </p>
+              <Link to="/upload" style={{ textDecoration: "none" }}>
+                <button
+                  style={{
+                    padding: "0.75rem 1.5rem",
+                    background: "linear-gradient(135deg, #ff6400, #ff9a00)",
+                    border: "none",
+                    borderRadius: "8px",
+                    color: "#fff",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    fontSize: "0.9rem",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  Upload a Video
+                </button>
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Quick-nav buttons */}
       <div
         style={{
@@ -124,6 +263,7 @@ export default function DashboardPage() {
           display: "grid",
           gridTemplateColumns: "1fr 1fr 1fr",
           gap: "0.75rem",
+          marginTop: "1.5rem",
         }}
       >
         <Link to="/shots" style={{ textDecoration: "none" }}>
@@ -181,6 +321,144 @@ export default function DashboardPage() {
           </button>
         </Link>
       </div>
+    </div>
+  );
+}
+
+function renderTrendChart(trendData, chartRef, trendChartInstance) {
+  if (!trendData || trendData.length < 2 || !chartRef.current) {
+    return;
+  }
+
+  // Calculate shot percentage for each trend point
+  const labels = trendData.map((point) => {
+    const date = new Date(point.created_at);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  });
+
+  const data = trendData.map((point) => {
+    const percentage = point.total_shots > 0
+      ? (point.makes / point.total_shots) * 100
+      : 0;
+    return percentage;
+  });
+
+  const ctx = chartRef.current.getContext('2d');
+
+  // Destroy previous chart instance if it exists
+  if (trendChartInstance.current) {
+    trendChartInstance.current.destroy();
+  }
+
+  trendChartInstance.current = new ChartJS(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Shot %',
+          data,
+          borderColor: '#2563eb',
+          backgroundColor: 'rgba(37, 99, 235, 0.08)',
+          fill: true,
+          borderWidth: 2.5,
+          tension: 0.3,
+          pointRadius: 4,
+          pointBackgroundColor: '#2563eb',
+          pointBorderColor: '#fff',
+          pointBorderWidth: 1.5,
+          pointHoverRadius: 5,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: false,
+        },
+        tooltip: {
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          padding: 12,
+          titleFont: { size: 12, weight: 'bold' },
+          bodyFont: { size: 11 },
+          displayColors: false,
+          callbacks: {
+            label: function (context) {
+              return `${context.parsed.y.toFixed(1)}%`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          title: {
+            display: true,
+            text: 'Date',
+            font: { size: 12, weight: 600 },
+            color: '#9ca3af',
+          },
+          ticks: {
+            font: { size: 11 },
+            color: '#6b7280',
+          },
+          grid: {
+            color: 'rgba(107, 114, 128, 0.1)',
+            drawBorder: false,
+          },
+        },
+        y: {
+          title: {
+            display: true,
+            text: 'Shot Percentage (%)',
+            font: { size: 12, weight: 600 },
+            color: '#9ca3af',
+          },
+          min: 0,
+          max: 100,
+          ticks: {
+            font: { size: 11 },
+            color: '#6b7280',
+            stepSize: 20,
+            callback: function (value) {
+              return value + '%';
+            },
+          },
+          grid: {
+            color: 'rgba(107, 114, 128, 0.1)',
+            drawBorder: false,
+          },
+        },
+      },
+    },
+  });
+}
+function StatCard({ label, value }) {
+  return (
+    <div
+      style={{
+        background: "#13131a",
+        border: "1px solid #1e1e2e",
+        borderRadius: "12px",
+        padding: "1rem",
+        textAlign: "center",
+      }}
+    >
+      <p
+        style={{
+          color: "#aaa",
+          fontSize: "0.7rem",
+          letterSpacing: "1px",
+          textTransform: "uppercase",
+          margin: "0 0 0.4rem",
+        }}
+      >
+        {label}
+      </p>
+      <p style={{ color: "#ff9a00", fontSize: "1.4rem", fontWeight: 700, margin: 0 }}>
+        {value}
+      </p>
     </div>
   );
 }

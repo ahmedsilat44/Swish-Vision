@@ -1,10 +1,14 @@
 import os
+import uuid
 import logging
 import mimetypes
+from datetime import datetime, timezone, timedelta
+from typing import Optional
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Query
 from fastapi.responses import FileResponse
 from sqlalchemy import func
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 from app.database import get_db
 from app.config import settings
 from app.models.user import User
@@ -23,6 +27,11 @@ from app.core.security import get_current_user, get_current_user_token, get_sess
 from app.tasks.pipeline_task import process_video
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
+
+# Short-lived media tokens: {token_str: (session_id, user_id, expires_at)}
+# These are single-request UUID tokens used so the JWT never appears in video URLs.
+_video_tokens: dict[str, tuple[int, int, datetime]] = {}
+_VIDEO_TOKEN_TTL = timedelta(minutes=5)
 
 ALLOWED_EXTENSIONS = {".mp4", ".avi", ".mov", ".mkv"}
 ALLOWED_MIME_TYPES = {"video/mp4", "video/x-msvideo", "video/quicktime", "video/x-matroska"}
@@ -43,6 +52,9 @@ async def upload_video(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="Missing filename")
+
     ext = os.path.splitext(file.filename)[1].lower()
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail="Unsupported file type")
@@ -50,16 +62,19 @@ async def upload_video(
     if file.content_type not in ALLOWED_MIME_TYPES:
         raise HTTPException(status_code=400, detail="Invalid MIME type")
 
-    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
-    session = SessionModel(user_id=current_user.id, original_filename=file.filename, status="uploading")
-    db.add(session)
-    db.commit()
-    db.refresh(session)
-
     max_bytes = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
-    filepath = os.path.join(settings.UPLOAD_DIR, f"{session.id}{ext}")
     bytes_written = 0
+    filepath = None
+    session = None
+
     try:
+        os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+        session = SessionModel(user_id=current_user.id, original_filename=file.filename, status="uploading")
+        db.add(session)
+        db.commit()
+        db.refresh(session)
+
+        filepath = os.path.join(settings.UPLOAD_DIR, f"{session.id}{ext}")
         with open(filepath, "wb") as f:
             while chunk := await file.read(1024 * 1024):
                 bytes_written += len(chunk)
@@ -70,13 +85,42 @@ async def upload_video(
                     db.commit()
                     raise HTTPException(status_code=413, detail=f"File exceeds {settings.MAX_UPLOAD_SIZE_MB} MB limit")
                 f.write(chunk)
+
+        session.status = "queued"
+        session.upload_path = filepath
+        db.commit()
+        db.refresh(session)
+    except HTTPException:
+        raise
+    except OSError as exc:
+        logging.exception("Upload file write failed: %s", exc)
+        db.rollback()
+        if filepath and os.path.exists(filepath):
+            try:
+                os.remove(filepath)
+            except OSError:
+                pass
+        if session and session.id:
+            try:
+                db.delete(session)
+                db.commit()
+            except Exception:
+                db.rollback()
+        raise HTTPException(status_code=500, detail="Server failed to store uploaded file")
+    except SQLAlchemyError as exc:
+        logging.exception("Upload DB operation failed: %s", exc)
+        db.rollback()
+        if filepath and os.path.exists(filepath):
+            try:
+                os.remove(filepath)
+            except OSError:
+                pass
+        raise HTTPException(
+            status_code=500,
+            detail="Database error during upload. If schema changed, run migrations (alembic upgrade head) and restart the backend.",
+        )
     finally:
         await file.close()
-
-    session.status = "queued"
-    session.upload_path = filepath
-    db.commit()
-    db.refresh(session)
 
     try:
         process_video.delay(session.id)
@@ -90,13 +134,47 @@ async def upload_video(
 
 @router.get("/", response_model=list[SessionListResponse])
 def list_sessions(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    sessions = (
-        db.query(SessionModel)
+    latest_report_id = (
+        db.query(func.max(Report.id))
+        .filter(Report.session_id == SessionModel.id)
+        .correlate(SessionModel)
+        .scalar_subquery()
+    )
+    rows = (
+        db.query(SessionModel, Report)
+        .outerjoin(Report, Report.id == latest_report_id)
         .filter(SessionModel.user_id == current_user.id)
         .order_by(SessionModel.created_at.desc())
         .all()
     )
-    return sessions
+    result = []
+    for session, report in rows:
+        if report is None:
+            shot_percentage = None
+            shots_made = None
+            shots_missed = None
+            total_shots = None
+        else:
+            total = report.total_shots or 0
+            makes = report.makes or 0
+            misses = report.misses or 0
+            shot_percentage = round(makes / total * 100, 1) if total > 0 else None
+            shots_made = makes
+            shots_missed = misses
+            total_shots = total
+        result.append(
+            SessionListResponse(
+                id=session.id,
+                original_filename=session.original_filename,
+                status=session.status,
+                created_at=session.created_at,
+                shot_percentage=shot_percentage,
+                shots_made=shots_made,
+                shots_missed=shots_missed,
+                total_shots=total_shots,
+            )
+        )
+    return result
 
 
 @router.get("/{session_id}", response_model=SessionResponse)
@@ -132,7 +210,7 @@ def get_report(
 @router.get("/{session_id}/shots", response_model=ShotAnalyticsResponse)
 def get_shots(session: SessionModel = Depends(verify_session_ownership), db: Session = Depends(get_db)):
     shots = db.query(ShotEvent).filter(ShotEvent.session_id == session.id).order_by(ShotEvent.shot_number).all()
-    
+
     def normalize_result(result):
         if result in ("make", "made", "1", 1, True):
             return "made"
@@ -152,7 +230,7 @@ def get_shots(session: SessionModel = Depends(verify_session_ownership), db: Ses
 
     makes = sum(1 for s in normalized_shots if s["outcome"] == "made")
     misses = len(shots) - makes
-    
+
     return {
         "session_id": session.id,
         "shots": normalized_shots,
@@ -161,14 +239,47 @@ def get_shots(session: SessionModel = Depends(verify_session_ownership), db: Ses
         "misses": misses,
     }
 
+@router.get("/{session_id}/video_token")
+def get_video_token(
+    session: SessionModel = Depends(verify_session_ownership),
+    current_user: User = Depends(get_current_user),
+):
+    """Issue a short-lived single-use media token so the JWT never appears in video URLs."""
+    # Lazily purge expired tokens to prevent unbounded growth
+    now = datetime.now(timezone.utc)
+    expired_keys = [k for k, (_, _, exp) in _video_tokens.items() if now > exp]
+    for k in expired_keys:
+        _video_tokens.pop(k, None)
+
+    token_str = str(uuid.uuid4())
+    _video_tokens[token_str] = (session.id, current_user.id, now + _VIDEO_TOKEN_TTL)
+    return {"video_token": token_str, "expires_in": int(_VIDEO_TOKEN_TTL.total_seconds())}
+
+
 @router.get("/{session_id}/output_video")
 def get_output_video(
     session_id: int,
-    token: str = Query(...),
+    token: Optional[str] = Query(None),
+    video_token: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
-    current_user = get_current_user_token(token, db)
-    session = get_session_or_403(session_id, current_user, db)
+    # Authenticate via short-lived media token (preferred — JWT never in URL)
+    if video_token:
+        entry = _video_tokens.get(video_token)
+        if not entry:
+            raise HTTPException(status_code=401, detail="Invalid or expired video token")
+        vid_session_id, _user_id, expires_at = entry
+        if datetime.now(timezone.utc) > expires_at:
+            _video_tokens.pop(video_token, None)
+            raise HTTPException(status_code=401, detail="Video token expired")
+        if vid_session_id != session_id:
+            raise HTTPException(status_code=403, detail="Token does not match session")
+        session = db.query(SessionModel).filter(SessionModel.id == session_id).first()
+    elif token:
+        current_user = get_current_user_token(token, db)
+        session = get_session_or_403(session_id, current_user, db)
+    else:
+        raise HTTPException(status_code=401, detail="Authentication required")
 
     if not session.output_path or not os.path.exists(session.output_path):
         raise HTTPException(status_code=404, detail="Output video not available")
@@ -234,7 +345,6 @@ def retry_session(
     return session
 
 
-
 @router.delete("/{session_id}", status_code=204)
 def delete_session(
     session: SessionModel = Depends(verify_session_ownership),
@@ -258,5 +368,3 @@ def delete_session(
     db.query(AngleFrame).filter(AngleFrame.session_id == session.id).delete(synchronize_session=False)
     db.delete(session)
     db.commit()
-
-

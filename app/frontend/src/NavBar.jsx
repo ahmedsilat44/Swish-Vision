@@ -2,9 +2,10 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 
 const NAV_LINKS = [
+  { to: "/dashboard", label: "Dashboard" },
   { to: "/sessions", label: "Sessions" },
-  { to: "/shots", label: "Shots" },
   { to: "/upload", label: "Upload" },
+  { to: "/shots", label: "Shots" },
 ];
 
 export default function NavBar() {

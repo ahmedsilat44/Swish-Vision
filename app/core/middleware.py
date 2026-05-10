@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.responses import JSONResponse
 from app.config import settings
 import logging
@@ -10,6 +11,30 @@ ALLOWED_CORS_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
 ]
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+
+        docs_paths = {"/docs", "/redoc", "/openapi.json"}
+        if request.url.path not in docs_paths:
+            response.headers["Content-Security-Policy"] = (
+                "default-src 'self'; "
+                "script-src 'self' https://cdnjs.cloudflare.com; "
+                "style-src 'self' 'unsafe-inline'; "
+                "img-src 'self' data:; "
+                "media-src 'self';"
+            )
+
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        if settings.ENV == "production":
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        return response
+
 
 def setup_middleware(app: FastAPI):
     # HTTPS redirect only in production.
@@ -35,6 +60,7 @@ def setup_middleware(app: FastAPI):
         allow_headers=["*"],
     )
 
+    app.add_middleware(SecurityHeadersMiddleware)
     # Security headers middleware
     @app.middleware("http")
     async def add_security_headers(request, call_next):

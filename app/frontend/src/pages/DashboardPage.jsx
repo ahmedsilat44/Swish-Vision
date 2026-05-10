@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Chart as ChartJS } from "chart.js/auto";
 import { useAuth } from "../AuthContext";
 
-const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:8000').replace(/\/+$/, '');
+const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:8000/api').replace(/\/+$/, '');
 
 function apiFetch(path) {
   const token = localStorage.getItem('access_token');

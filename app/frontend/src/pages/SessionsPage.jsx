@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 import Tooltip from "../components/Tooltip";
 
-const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:8000').replace(/\/+$/, '');
+const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:8000/api').replace(/\/+$/, '');
 
 async function retrySession(sessionId, setSessions, token, setError) {
   const res = await fetch(`${API_URL}/sessions/${sessionId}/retry`, {

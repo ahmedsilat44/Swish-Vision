@@ -8,7 +8,7 @@ import MetricTooltip from '../components/Tooltip';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, LineController, annotationPlugin);
 
-const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:8000').replace(/\/+$/, '');
+const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:8000/api').replace(/\/+$/, '');
 const API_BASE = API_URL.endsWith('/api') ? API_URL.slice(0, -4) : API_URL;
 
 function apiFetch(path) {

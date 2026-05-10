@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback } from "react";
 
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
+const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:8000').replace(/\/+$/, '');
 
 const AuthContext = createContext(null);
 
@@ -16,7 +16,7 @@ export function AuthProvider({ children }) {
     try {
       const t = localStorage.getItem("access_token");
       if (t) {
-        await fetch(`${API_URL}/auth/logout`, {
+        await fetch(`${API_URL}/api/auth/logout`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${t}`,

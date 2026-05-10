@@ -23,7 +23,7 @@ def verify_password(plain: str, hashed: str) -> bool:
     return pwd_context.verify(plain, hashed)
 
 
-def create_access_token(data: dict, expires_minutes: int = 60) -> str:
+def create_access_token(data: dict, expires_minutes: int = 480) -> str:
     payload = data.copy()
     payload["jti"] = str(uuid.uuid4())
     payload["exp"] = datetime.now(timezone.utc) + timedelta(minutes=expires_minutes)

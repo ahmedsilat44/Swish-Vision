@@ -1,8 +1,26 @@
 import { useEffect, useState, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext";
+import Tooltip from "../components/Tooltip";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
+
+async function retrySession(sessionId, setSessions, token, setError) {
+  const res = await fetch(`${API_URL}/sessions/${sessionId}/retry`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    setError(body.detail || "Failed to retry session.");
+    return;
+  }
+
+  setSessions((prev) =>
+    prev.map((s) => (s.id === sessionId ? { ...s, ...body } : s))
+  );
+}
 
 async function deleteSession(sessionId, setSessions, token, setError) {
   if (!window.confirm("Delete this session? This cannot be undone.")) return;
@@ -100,9 +118,7 @@ export default function SessionsPage() {
     <div style={s.page}>
       <h2 style={s.heading}>Session History</h2>
 
-      {error && (
-        <div style={s.errorBanner}>{error}</div>
-      )}
+      {error && <div style={s.errorBanner}>{error}</div>}
 
       {sessions.length === 0 ? (
         <div style={s.emptyState}>
@@ -118,7 +134,13 @@ export default function SessionsPage() {
                 <th style={s.th}>Video</th>
                 <th style={s.th}>Shots</th>
                 <th style={s.th}>Made %</th>
-                <th style={s.th}>Consistency</th>
+                <th style={s.th}>
+                  Consistency
+                  <Tooltip
+                    text="A score from 0–100 measuring how uniform your shooting form is across all detected shots. Higher is more consistent."
+                    label="What is Consistency Score?"
+                  />
+                </th>
                 <th style={s.th}>Status</th>
                 <th style={s.th}>Actions</th>
               </tr>
@@ -128,14 +150,13 @@ export default function SessionsPage() {
                 const totalShots =
                   session.total_shots != null
                     ? session.total_shots
-                    : session.shots_made != null || session.shots_missed != null
-                      ? (session.shots_made ?? 0) + (session.shots_missed ?? 0)
-                      : null;
+                    : (session.shots_made ?? 0) + (session.shots_missed ?? 0);
                 const madePercent =
                   session.shot_percentage != null
                     ? session.shot_percentage.toFixed(1) + "%"
                     : "—";
                 const isProcessing = session.status === "processing";
+                const isFailed = session.status === "failed";
 
                 return (
                   <tr key={session.id} style={s.row}>
@@ -143,10 +164,7 @@ export default function SessionsPage() {
                       {new Date(session.created_at).toLocaleDateString()}
                     </td>
                     <td style={s.td}>
-                      <Link
-                        to={`/results/${session.id}`}
-                        style={s.fileLink}
-                      >
+                      <Link to={`/results/${session.id}`} style={s.fileLink}>
                         {session.original_filename}
                       </Link>
                     </td>
@@ -157,19 +175,32 @@ export default function SessionsPage() {
                       <StatusBadge status={session.status} />
                     </td>
                     <td style={s.td}>
-                      <button
-                        disabled={isProcessing}
-                        title={isProcessing ? "Cannot delete while processing" : "Delete session"}
-                        onClick={() =>
-                          deleteSession(session.id, setSessions, token, setError)
-                        }
-                        style={{
-                          ...s.deleteBtn,
-                          ...(isProcessing ? s.deleteBtnDisabled : {}),
-                        }}
-                      >
-                        Delete
-                      </button>
+                      <div style={{ display: "flex", gap: "0.4rem" }}>
+                        {isFailed && (
+                          <button
+                            title="Retry processing"
+                            onClick={() =>
+                              retrySession(session.id, setSessions, token, setError)
+                            }
+                            style={s.retryBtn}
+                          >
+                            Retry
+                          </button>
+                        )}
+                        <button
+                          disabled={isProcessing}
+                          title={isProcessing ? "Cannot delete while processing" : "Delete session"}
+                          onClick={() =>
+                            deleteSession(session.id, setSessions, token, setError)
+                          }
+                          style={{
+                            ...s.deleteBtn,
+                            ...(isProcessing ? s.deleteBtnDisabled : {}),
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -261,6 +292,16 @@ const s = {
     color: "#3b82f6",
     textDecoration: "none",
     fontWeight: 500,
+  },
+  retryBtn: {
+    padding: "0.35rem 0.8rem",
+    borderRadius: 6,
+    border: "1px solid #bfdbfe",
+    background: "#dbeafe",
+    color: "#1d4ed8",
+    cursor: "pointer",
+    fontSize: "0.8rem",
+    fontFamily: "inherit",
   },
   deleteBtn: {
     padding: "0.35rem 0.8rem",

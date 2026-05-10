@@ -124,10 +124,10 @@ def list_sessions(db: Session = Depends(get_db), current_user: User = Depends(ge
                 original_filename=session.original_filename,
                 status=session.status,
                 created_at=session.created_at,
-                shot_percentage=shot_percentage,
-                shots_made=shots_made,
-                shots_missed=shots_missed,
-                total_shots=total_shots,
+                shot_percentage=round(makes / total * 100, 1) if total > 0 else None,
+                shots_made=makes if report else None,
+                shots_missed=misses if report else None,
+                total_shots=total if report else None,
             )
         )
     return result

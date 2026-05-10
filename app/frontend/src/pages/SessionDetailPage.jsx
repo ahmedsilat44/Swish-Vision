@@ -76,7 +76,13 @@ export default function SessionDetailPage() {
                     label="What is Elbow Angle?"
                   />
                 </th>
-                <th style={styles.th}>Shoulder Angle</th>
+                <th style={styles.th}>
+                  Shoulder Angle
+                  <Tooltip
+                    text="The angle at your shooting shoulder at the point of release. Consistent values across shots indicate repeatable upper-body alignment."
+                    label="What is Shoulder Angle?"
+                  />
+                </th>
                 <th style={styles.th}>Knee Angle</th>
                 <th style={styles.th}>Outcome</th>
               </tr>

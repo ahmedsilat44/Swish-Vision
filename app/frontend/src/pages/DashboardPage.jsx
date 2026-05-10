@@ -1,10 +1,32 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../AuthContext";
+
+const API_URL = (process.env.REACT_APP_API_URL || "http://localhost:8000").replace(/\/+$/, "");
+
+function apiFetch(path, options = {}) {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  const normalizedBase =
+    API_URL.endsWith("/api") && normalizedPath.startsWith("/api")
+      ? API_URL.slice(0, -4)
+      : API_URL;
+  return fetch(`${normalizedBase}${normalizedPath}`, options);
+}
 
 export default function DashboardPage() {
   const { token } = useAuth();
   const [copied, setCopied] = useState(false);
+  const [summary, setSummary] = useState(null);
+
+  useEffect(() => {
+    if (!token) return;
+    apiFetch(`/api/dashboard/summary`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => setSummary(data))
+      .catch(() => {});
+  }, [token]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(token).then(() => {
@@ -51,6 +73,29 @@ export default function DashboardPage() {
       <p style={{ color: "#555", margin: 0, fontSize: "0.9rem" }}>
         Use the navigation above or the shortcuts below.
       </p>
+
+      {/* Stats cards */}
+      {summary && (
+        <div
+          style={{
+            width: "100%",
+            maxWidth: "640px",
+            display: "grid",
+            gridTemplateColumns: "repeat(2, 1fr)",
+            gap: "0.75rem",
+            marginTop: "0.5rem",
+          }}
+        >
+          <StatCard
+            label="Shot %"
+            value={summary.shot_percentage != null ? `${summary.shot_percentage.toFixed(1)}%` : "—"}
+          />
+          <StatCard
+            label="Total Shots"
+            value={summary.total_shots ?? "—"}
+          />
+        </div>
+      )}
 
       {/* Bearer Token Box */}
       <div
@@ -181,6 +226,35 @@ export default function DashboardPage() {
           </button>
         </Link>
       </div>
+    </div>
+  );
+}
+
+function StatCard({ label, value }) {
+  return (
+    <div
+      style={{
+        background: "#13131a",
+        border: "1px solid #1e1e2e",
+        borderRadius: "12px",
+        padding: "1rem",
+        textAlign: "center",
+      }}
+    >
+      <p
+        style={{
+          color: "#aaa",
+          fontSize: "0.7rem",
+          letterSpacing: "1px",
+          textTransform: "uppercase",
+          margin: "0 0 0.4rem",
+        }}
+      >
+        {label}
+      </p>
+      <p style={{ color: "#ff9a00", fontSize: "1.4rem", fontWeight: 700, margin: 0 }}>
+        {value}
+      </p>
     </div>
   );
 }

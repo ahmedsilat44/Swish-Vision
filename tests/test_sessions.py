@@ -32,6 +32,64 @@ class TestSessions:
         assert res.status_code == 200
         assert res.json() == []
 
+    def test_list_sessions_includes_analytics_fields(self, client, db_session):
+        user = User(name="List Analytics", email="list-analytics@example.com", password_hash="hash")
+        db_session.add(user)
+        db_session.commit()
+        db_session.refresh(user)
+        token = create_access_token({"sub": str(user.id)})
+
+        with_report = SessionModel(user_id=user.id, original_filename="with_report.mp4", status="completed")
+        without_report = SessionModel(user_id=user.id, original_filename="no_report.mp4", status="completed")
+        db_session.add_all([with_report, without_report])
+        db_session.commit()
+        db_session.refresh(with_report)
+        db_session.refresh(without_report)
+
+        db_session.add(Report(session_id=with_report.id, total_shots=4, makes=3, misses=1))
+        db_session.commit()
+
+        res = client.get("/api/sessions/", headers={"Authorization": f"Bearer {token}"})
+        assert res.status_code == 200
+        body = {row["id"]: row for row in res.json()}
+
+        with_row = body[with_report.id]
+        assert with_row["total_shots"] == 4
+        assert with_row["shots_made"] == 3
+        assert with_row["shots_missed"] == 1
+        assert with_row["shot_percentage"] == 75.0
+
+        without_row = body[without_report.id]
+        assert without_row["total_shots"] is None
+        assert without_row["shots_made"] is None
+        assert without_row["shots_missed"] is None
+        assert without_row["shot_percentage"] is None
+
+    def test_list_sessions_uses_latest_report_when_multiple_exist(self, client, db_session):
+        user = User(name="Latest Report", email="latest-report@example.com", password_hash="hash")
+        db_session.add(user)
+        db_session.commit()
+        db_session.refresh(user)
+        token = create_access_token({"sub": str(user.id)})
+
+        session = SessionModel(user_id=user.id, original_filename="retry.mp4", status="completed")
+        db_session.add(session)
+        db_session.commit()
+        db_session.refresh(session)
+
+        db_session.add(Report(session_id=session.id, total_shots=2, makes=0, misses=2))
+        db_session.commit()
+        db_session.add(Report(session_id=session.id, total_shots=5, makes=4, misses=1))
+        db_session.commit()
+
+        res = client.get("/api/sessions/", headers={"Authorization": f"Bearer {token}"})
+        assert res.status_code == 200
+        rows = res.json()
+        assert len(rows) == 1
+        assert rows[0]["total_shots"] == 5
+        assert rows[0]["shots_made"] == 4
+        assert rows[0]["shot_percentage"] == 80.0
+
     def test_get_nonexistent_session(self, client, db_session):
         token = get_auth_token(db_session)
         res = client.get("/api/sessions/9999", headers={"Authorization": f"Bearer {token}"})

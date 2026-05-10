@@ -90,18 +90,34 @@ async def upload_video(
 
 @router.get("/", response_model=list[SessionListResponse])
 def list_sessions(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    latest_report_id = (
+        db.query(func.max(Report.id))
+        .filter(Report.session_id == SessionModel.id)
+        .correlate(SessionModel)
+        .scalar_subquery()
+    )
     rows = (
         db.query(SessionModel, Report)
-        .outerjoin(Report, Report.session_id == SessionModel.id)
+        .outerjoin(Report, Report.id == latest_report_id)
         .filter(SessionModel.user_id == current_user.id)
         .order_by(SessionModel.created_at.desc())
         .all()
     )
     result = []
     for session, report in rows:
-        total = report.total_shots if report else 0
-        makes = report.makes if report else 0
-        misses = report.misses if report else 0
+        if report is None:
+            shot_percentage = None
+            shots_made = None
+            shots_missed = None
+            total_shots = None
+        else:
+            total = report.total_shots or 0
+            makes = report.makes or 0
+            misses = report.misses or 0
+            shot_percentage = round(makes / total * 100, 1) if total > 0 else None
+            shots_made = makes
+            shots_missed = misses
+            total_shots = total
         result.append(
             SessionListResponse(
                 id=session.id,
@@ -150,7 +166,7 @@ def get_report(
 @router.get("/{session_id}/shots", response_model=ShotAnalyticsResponse)
 def get_shots(session: SessionModel = Depends(verify_session_ownership), db: Session = Depends(get_db)):
     shots = db.query(ShotEvent).filter(ShotEvent.session_id == session.id).order_by(ShotEvent.shot_number).all()
-    
+
     def normalize_result(result):
         if result in ("make", "made", "1", 1, True):
             return "made"
@@ -170,7 +186,7 @@ def get_shots(session: SessionModel = Depends(verify_session_ownership), db: Ses
 
     makes = sum(1 for s in normalized_shots if s["outcome"] == "made")
     misses = len(shots) - makes
-    
+
     return {
         "session_id": session.id,
         "shots": normalized_shots,
@@ -252,7 +268,6 @@ def retry_session(
     return session
 
 
-
 @router.delete("/{session_id}", status_code=204)
 def delete_session(
     session: SessionModel = Depends(verify_session_ownership),
@@ -276,5 +291,3 @@ def delete_session(
     db.query(AngleFrame).filter(AngleFrame.session_id == session.id).delete(synchronize_session=False)
     db.delete(session)
     db.commit()
-
-

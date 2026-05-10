@@ -5,6 +5,7 @@ const NAV_LINKS = [
   { to: "/sessions", label: "Sessions" },
   { to: "/shots", label: "Shots" },
   { to: "/upload", label: "Upload" },
+  { to: "/help", label: "Help" },
 ];
 
 export default function NavBar() {

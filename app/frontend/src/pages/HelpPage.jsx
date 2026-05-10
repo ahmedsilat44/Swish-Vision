@@ -91,7 +91,7 @@ export default function HelpPage() {
         <h2 style={SECTION_TITLE}>⚡ How It Works</h2>
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
           <Step num="1" title="Record your session" desc="Film yourself shooting from a fixed camera position. Keep the basket and your full body in frame." />
-          <Step num="2" title="Upload the video" desc="Go to Upload, choose your video file (MP4, MOV, AVI, MKV — up to the configured limit), and submit." />
+          <Step num="2" title="Upload the video" desc="Go to Upload, choose your video file (MP4, MOV, AVI, or MKV — up to 500 MB), and submit." />
           <Step num="3" title="Wait for analysis" desc="Swish Vision detects each shot attempt, tracks the ball and your pose, and computes release angles and outcomes. Processing time depends on video length." />
           <Step num="4" title="Review your results" desc="Open the session from the Sessions list to see shot-by-shot results, shooting percentage, angle charts, and AI feedback." />
         </div>

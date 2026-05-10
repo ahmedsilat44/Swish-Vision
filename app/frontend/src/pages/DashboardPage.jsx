@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
+import { Chart as ChartJS } from "chart.js/auto";
 import { useAuth } from "../AuthContext";
 
 const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:8000').replace(/\/+$/, '');
@@ -23,6 +24,7 @@ export default function DashboardPage() {
   const [trendData, setTrendData] = useState([]);
   const [trendDataLoaded, setTrendDataLoaded] = useState(false);
   const chartRef = useRef(null);
+  const trendChartInstance = useRef(null);
 
   useEffect(() => {
     async function loadTrendData() {
@@ -44,7 +46,10 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (trendDataLoaded && trendData.length >= 2 && chartRef.current) {
-      renderTrendChart(trendData, chartRef);
+      renderTrendChart(trendData, chartRef, trendChartInstance);
+    } else if (trendChartInstance.current) {
+      trendChartInstance.current.destroy();
+      trendChartInstance.current = null;
     }
   }, [trendDataLoaded, trendData]);
   const [summary, setSummary] = useState(null);
@@ -58,6 +63,15 @@ export default function DashboardPage() {
       .then((data) => setSummary(data))
       .catch(() => {});
   }, [token]);
+
+  useEffect(() => {
+    return () => {
+      if (trendChartInstance.current) {
+        trendChartInstance.current.destroy();
+        trendChartInstance.current = null;
+      }
+    };
+  }, []);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(token).then(() => {
@@ -311,7 +325,7 @@ export default function DashboardPage() {
   );
 }
 
-function renderTrendChart(trendData, chartRef) {
+function renderTrendChart(trendData, chartRef, trendChartInstance) {
   if (!trendData || trendData.length < 2 || !chartRef.current) {
     return;
   }
@@ -332,11 +346,11 @@ function renderTrendChart(trendData, chartRef) {
   const ctx = chartRef.current.getContext('2d');
 
   // Destroy previous chart instance if it exists
-  if (window.trend_chart_instance) {
-    window.trend_chart_instance.destroy();
+  if (trendChartInstance.current) {
+    trendChartInstance.current.destroy();
   }
 
-  window.trend_chart_instance = new window.Chart(ctx, {
+  trendChartInstance.current = new ChartJS(ctx, {
     type: 'line',
     data: {
       labels,
@@ -419,6 +433,7 @@ function renderTrendChart(trendData, chartRef) {
       },
     },
   });
+}
 function StatCard({ label, value }) {
   return (
     <div

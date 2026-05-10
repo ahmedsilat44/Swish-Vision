@@ -1,7 +1,15 @@
 from fastapi import FastAPI
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from app.config import settings
+import logging
+
+
+ALLOWED_CORS_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
 
 def setup_middleware(app: FastAPI):
     # HTTPS redirect only in production.
@@ -21,10 +29,7 @@ def setup_middleware(app: FastAPI):
     # CORS – allow React dev server and localhost origins
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            "http://localhost:3000",
-            "http://127.0.0.1:3000",
-        ],
+        allow_origins=ALLOWED_CORS_ORIGINS,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -33,7 +38,24 @@ def setup_middleware(app: FastAPI):
     # Security headers middleware
     @app.middleware("http")
     async def add_security_headers(request, call_next):
-        response = await call_next(request)
+        try:
+            response = await call_next(request)
+        except Exception:
+            logging.exception("Unhandled request error")
+            response = JSONResponse(
+                status_code=500,
+                content={
+                    "detail": "Internal server error. Check backend logs for root cause.",
+                },
+            )
+
+            # Keep browser diagnostics visible for allowed front-end origins.
+            origin = request.headers.get("origin")
+            if origin in ALLOWED_CORS_ORIGINS:
+                response.headers["Access-Control-Allow-Origin"] = origin
+                response.headers["Access-Control-Allow-Credentials"] = "true"
+                response.headers["Vary"] = "Origin"
+
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"

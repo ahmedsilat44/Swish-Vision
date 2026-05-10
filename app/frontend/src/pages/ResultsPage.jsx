@@ -48,9 +48,21 @@ export default function ResultsPage() {
   }, [pageState, report]);
 
   useEffect(() => {
-    if (angleFrames.length > 0 && chartRef.current) {
-      renderElbowAngleChart(angleFrames, chartRef);
+    if (chartInstance.current) {
+      chartInstance.current.destroy();
+      chartInstance.current = null;
     }
+
+    if (angleFrames.length > 0 && chartRef.current) {
+      chartInstance.current = renderElbowAngleChart(angleFrames, chartRef);
+    }
+
+    return () => {
+      if (chartInstance.current) {
+        chartInstance.current.destroy();
+        chartInstance.current = null;
+      }
+    };
   }, [angleFrames]);
 
   useEffect(() => {

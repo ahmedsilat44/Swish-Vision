@@ -21,28 +21,54 @@ function apiFetch(path) {
 export default function DashboardPage() {
   const { token } = useAuth();
   const [copied, setCopied] = useState(false);
+  const [summaryStats, setSummaryStats] = useState(null);
+  const [summaryLoaded, setSummaryLoaded] = useState(false);
   const [trendData, setTrendData] = useState([]);
   const [trendDataLoaded, setTrendDataLoaded] = useState(false);
+  const [gridColumns, setGridColumns] = useState("repeat(3, 1fr)");
   const chartRef = useRef(null);
   const trendChartInstance = useRef(null);
 
   useEffect(() => {
-    async function loadTrendData() {
-      try {
-        const res = await apiFetch('/api/dashboard/trends');
-        if (res.ok) {
-          const data = await res.json();
-          setTrendData(data);
-        }
-      } catch (err) {
-        console.error('Failed to load trend data:', err);
-      } finally {
-        setTrendDataLoaded(true);
-      }
-    }
-
-    loadTrendData();
+    fetchSummaryStats();
+    fetchTrendData();
+    
+    const handleResize = () => {
+      setGridColumns(window.innerWidth < 600 ? "1fr" : "repeat(3, 1fr)");
+    };
+    
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  async function fetchSummaryStats() {
+    try {
+      const res = await apiFetch('/api/dashboard/summary');
+      if (res.ok) {
+        const data = await res.json();
+        setSummaryStats(data);
+      }
+    } catch (err) {
+      console.error('Failed to load summary stats:', err);
+    } finally {
+      setSummaryLoaded(true);
+    }
+  }
+
+  async function fetchTrendData() {
+    try {
+      const res = await apiFetch('/api/dashboard/trends');
+      if (res.ok) {
+        const data = await res.json();
+        setTrendData(data);
+      }
+    } catch (err) {
+      console.error('Failed to load trend data:', err);
+    } finally {
+      setTrendDataLoaded(true);
+    }
+  }
 
   useEffect(() => {
     if (trendDataLoaded && trendData.length >= 2 && chartRef.current) {
@@ -52,17 +78,6 @@ export default function DashboardPage() {
       trendChartInstance.current = null;
     }
   }, [trendDataLoaded, trendData]);
-  const [summary, setSummary] = useState(null);
-
-  useEffect(() => {
-    if (!token) return;
-    apiFetch(`/api/dashboard/summary`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => setSummary(data))
-      .catch(() => {});
-  }, [token]);
 
   useEffect(() => {
     return () => {
@@ -120,26 +135,140 @@ function AppShell() {
         Use the navigation above or the shortcuts below.
       </p>
 
-      {/* Stats cards */}
-      {summary && (
+      {/* Summary Stats Section */}
+      {summaryLoaded && (
         <div
           style={{
             width: "100%",
             maxWidth: "640px",
-            display: "grid",
-            gridTemplateColumns: "repeat(2, 1fr)",
-            gap: "0.75rem",
-            marginTop: "0.5rem",
+            marginTop: "1.5rem",
           }}
         >
-          <StatCard
-            label="Shot %"
-            value={summary.shot_percentage != null ? `${summary.shot_percentage.toFixed(1)}%` : "—"}
-          />
-          <StatCard
-            label="Total Shots"
-            value={summary.total_shots ?? "—"}
-          />
+          <h2 style={{ fontSize: "1rem", fontWeight: 700, margin: "0 0 1rem", color: "#fff" }}>
+            Your Stats
+          </h2>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: gridColumns,
+              gap: "1rem",
+              marginBottom: "1rem",
+            }}
+          >
+            {/* Total Sessions Card */}
+            <div
+              style={{
+                background: "#13131a",
+                border: "1px solid #1e1e2e",
+                borderRadius: "12px",
+                padding: "1.25rem",
+                textAlign: "center",
+              }}
+            >
+              <div
+                style={{
+                  display: "block",
+                  fontSize: "2.5rem",
+                  fontWeight: 700,
+                  color: "#ff9a00",
+                  lineHeight: 1.1,
+                  marginBottom: "0.25rem",
+                }}
+              >
+                {summaryStats?.total_sessions != null ? summaryStats.total_sessions : "N/A"}
+              </div>
+              <div
+                style={{
+                  fontSize: "0.8rem",
+                  color: "#aaa",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                  marginTop: "0.25rem",
+                }}
+              >
+                Total Sessions
+              </div>
+            </div>
+
+            {/* Lifetime Shot % Card */}
+            <div
+              style={{
+                background: "#13131a",
+                border: "1px solid #1e1e2e",
+                borderRadius: "12px",
+                padding: "1.25rem",
+                textAlign: "center",
+              }}
+            >
+              <div
+                style={{
+                  display: "block",
+                  fontSize: "2.5rem",
+                  fontWeight: 700,
+                  color: "#ff9a00",
+                  lineHeight: 1.1,
+                  marginBottom: "0.25rem",
+                }}
+              >
+                {summaryStats?.shot_percentage != null
+                  ? `${summaryStats.shot_percentage.toFixed(1)}%`
+                  : "N/A"}
+              </div>
+              <div
+                style={{
+                  fontSize: "0.8rem",
+                  color: "#aaa",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                  marginTop: "0.25rem",
+                }}
+              >
+                Lifetime Shot %
+              </div>
+            </div>
+
+            {/* Avg Consistency Card */}
+            <div
+              style={{
+                background: "#13131a",
+                border: "1px solid #1e1e2e",
+                borderRadius: "12px",
+                padding: "1.25rem",
+                textAlign: "center",
+              }}
+            >
+              <div
+                style={{
+                  display: "block",
+                  fontSize: "2.5rem",
+                  fontWeight: 700,
+                  color: "#ff9a00",
+                  lineHeight: 1.1,
+                  marginBottom: "0.25rem",
+                }}
+              >
+                {summaryStats?.avg_consistency != null
+                  ? `${summaryStats.avg_consistency.toFixed(1)}`
+                  : "N/A"}
+              </div>
+              <div
+                style={{
+                  fontSize: "0.8rem",
+                  color: "#aaa",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                  marginTop: "0.25rem",
+                }}
+              >
+                Avg Consistency
+              </div>
+            </div>
+          </div>
+          {summaryStats?.total_sessions === 0 && (
+            <p style={{ color: "#6b7280", textAlign: "center", fontSize: "0.9rem", margin: "0" }}>
+              Upload your first session to start tracking your progress.
+            </p>
+          )}
         </div>
       )}
 

@@ -24,10 +24,10 @@ def dashboard_summary(
     )
     agg = (
         db.query(
-            func.count(func.distinct(SessionModel.id)).label("completed_sessions"),
             func.coalesce(func.sum(Report.total_shots), 0).label("total_shots"),
             func.coalesce(func.sum(Report.makes), 0).label("total_makes"),
         )
+        .select_from(SessionModel)
         .outerjoin(Report, Report.session_id == SessionModel.id)
         .filter(
             SessionModel.user_id == current_user.id,
@@ -35,17 +35,29 @@ def dashboard_summary(
         )
         .one()
     )
-    completed_sessions = int(agg.completed_sessions)
     total_shots = int(agg.total_shots)
     total_makes = int(agg.total_makes)
     shot_percentage = round(total_makes / total_shots * 100, 1) if total_shots > 0 else None
+    
+    # Calculate average consistency (average shot percentage per session)
+    session_averages = (
+        db.query(func.avg((Report.makes * 100.0) / Report.total_shots).label("avg_consistency"))
+        .filter(
+            Report.session_id.in_(
+                db.query(SessionModel.id).filter(SessionModel.user_id == current_user.id, SessionModel.status == "completed")
+            ),
+            Report.total_shots > 0,
+        )
+        .scalar()
+    )
+    avg_consistency = round(session_averages, 1) if session_averages is not None else None
 
     return DashboardSummaryResponse(
         total_sessions=total_sessions,
-        completed_sessions=completed_sessions,
         total_shots=total_shots,
         total_makes=total_makes,
         shot_percentage=shot_percentage,
+        avg_consistency=avg_consistency,
     )
 
 

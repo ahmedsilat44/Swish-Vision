@@ -30,7 +30,18 @@ export default function ResultsPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [report, setReport] = useState(null);
   const [shots, setShots] = useState([]);
+  const [analysisReady, setAnalysisReady] = useState(false);
   const pollTimer = useRef(null);
+
+  useEffect(() => {
+    if (pageState !== 'completed' || !report) {
+      setAnalysisReady(false);
+      return undefined;
+    }
+
+    const animationFrame = window.requestAnimationFrame(() => setAnalysisReady(true));
+    return () => window.cancelAnimationFrame(animationFrame);
+  }, [pageState, report]);
 
   useEffect(() => {
     loadSession();
@@ -143,7 +154,7 @@ export default function ResultsPage() {
   // completed
   const token = localStorage.getItem('access_token') || '';
   const videoSrc = `${API_URL}/api/sessions/${sessionId}/output_video?token=${encodeURIComponent(token)}`;
-  const shotPercentage = Number.isFinite(report?.shot_percentage) ? report.shot_percentage : 0;
+  const shotPercentage = getNullableNumber(report?.shot_percentage);
   const shotsMade = Number(report?.shots_made) || 0;
   const shotsMissed = Number(report?.shots_missed) || 0;
   const totalShots = Number(report?.total_shots) || shots.length;
@@ -161,10 +172,12 @@ export default function ResultsPage() {
 
   return (
     <div style={s.page}>
+      {renderFormAnalysis(report, analysisReady)}
+
       {/* Hero stat */}
       <div style={s.heroCard}>
         <p style={s.heroLabel}>Shot Percentage</p>
-        <p style={s.heroStat}>{shotPercentage.toFixed(1)}%</p>
+        <p style={s.heroStat}>{shotPercentage != null ? `${shotPercentage.toFixed(1)}%` : 'N/A'}</p>
         <p style={s.heroSub}>
           {shotsMade} made · {shotsMissed} missed · {totalShots} total
         </p>
@@ -232,6 +245,126 @@ export default function ResultsPage() {
   );
 }
 
+function renderFormAnalysis(report, animate) {
+  const consistencyScore = getNullableNumber(report?.shot_percentage);
+  const avgReleaseAngle = getNullableNumber(report?.avg_release_angle);
+  const feedbackText = normalizeFeedbackText(report?.feedback_text);
+  const consistencyLabel = getConsistencyLabel(consistencyScore);
+  const releaseTone = getReleaseTone(avgReleaseAngle);
+
+  return (
+    <div style={s.card}>
+      <h3 style={s.cardTitle}>Form Analysis</h3>
+      <div style={s.formAnalysisGrid}>
+        <section style={s.analysisBlock}>
+          <div style={s.analysisHeader}>
+            <span style={s.analysisLabel}>Consistency Score</span>
+            <span style={s.analysisMeta}>{consistencyLabel}</span>
+          </div>
+          <div style={s.scoreRow}>
+            <div style={s.scoreValue}>{consistencyScore != null ? consistencyScore.toFixed(0) : 'N/A'}</div>
+            <div style={s.scoreBarWrap} aria-label="Consistency score bar">
+              <div style={s.scoreBarTrack}>
+                <div style={s.scoreBarFillContainer}>
+                  <div
+                    style={{
+                      ...s.scoreBarFill,
+                      width: consistencyScore != null && animate ? `${Math.max(0, Math.min(100, consistencyScore))}%` : '0%',
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+          <p style={s.analysisHint}>Excellent (≥80), Good (≥60), Fair (≥40), Needs Work (&lt;40)</p>
+        </section>
+
+        <section style={s.analysisBlock}>
+          <div style={s.analysisHeader}>
+            <span style={s.analysisLabel}>Average Release Angle</span>
+            <span style={{ ...s.analysisMeta, color: releaseTone.color }}>{releaseTone.label}</span>
+          </div>
+          <div style={s.angleValueRow}>
+            <div style={{ ...s.angleValue, color: releaseTone.color }}>
+              {avgReleaseAngle != null ? `${avgReleaseAngle.toFixed(1)}°` : 'N/A'}
+            </div>
+            <div style={s.angleBandWrap} aria-label="Release angle reference band">
+              <div style={s.angleScale}>
+                <div
+                  style={{
+                    ...s.angleIdealBand,
+                    left: '50%',
+                    width: '11.1%',
+                  }}
+                />
+                <div style={s.angleMarkerRail} />
+                {avgReleaseAngle != null ? (
+                  <div
+                    style={{
+                      ...s.angleMarker,
+                      left: `${Math.max(0, Math.min(100, (avgReleaseAngle / 90) * 100))}%`,
+                      opacity: animate ? 1 : 0,
+                    }}
+                  />
+                ) : null}
+              </div>
+              <div style={s.angleScaleLabels}>
+                <span>0°</span>
+                <span>Ideal: 45–55°</span>
+                <span>90°</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section style={{ ...s.analysisBlock, ...s.feedbackBlock }}>
+          <div style={s.analysisHeader}>
+            <span style={s.analysisLabel}>Feedback</span>
+          </div>
+          <p style={s.feedbackText}>{feedbackText}</p>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function getNullableNumber(value) {
+  return Number.isFinite(value) ? value : null;
+}
+
+function normalizeFeedbackText(value) {
+  if (typeof value !== 'string') {
+    return 'No feedback available for this session.';
+  }
+
+  const text = value.trim();
+  return text ? text : 'No feedback available for this session.';
+}
+
+function getConsistencyLabel(score) {
+  if (score == null) return 'N/A';
+  if (score >= 80) return 'Excellent';
+  if (score >= 60) return 'Good';
+  if (score >= 40) return 'Fair';
+  return 'Needs Work';
+}
+
+function getReleaseTone(angle) {
+  if (angle == null) {
+    return { label: 'N/A', color: '#6b7280' };
+  }
+
+  if (angle >= 45 && angle <= 55) {
+    return { label: 'Ideal', color: '#16a34a' };
+  }
+
+  if (angle >= 40 && angle <= 60) {
+    return { label: 'Near ideal', color: '#d97706' };
+  }
+
+  return { label: 'Outside range', color: '#dc2626' };
+}
+
 function CenteredCard({ children }) {
   return (
     <div style={s.centered}>
@@ -287,6 +420,139 @@ const s = {
     margin: 0,
     color: '#aaa',
     fontSize: '0.9rem',
+  },
+  formAnalysisGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+    gap: '1rem',
+  },
+  analysisBlock: {
+    border: '1px solid #e5e7eb',
+    borderRadius: 12,
+    padding: '1rem 1.1rem',
+    background: 'linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%)',
+  },
+  analysisHeader: {
+    display: 'flex',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    gap: '0.75rem',
+    marginBottom: '0.85rem',
+  },
+  analysisLabel: {
+    fontSize: '0.95rem',
+    fontWeight: 700,
+    color: '#111827',
+  },
+  analysisMeta: {
+    fontSize: '0.8rem',
+    fontWeight: 700,
+    color: '#6b7280',
+    textTransform: 'uppercase',
+    letterSpacing: '0.08em',
+  },
+  scoreRow: {
+    display: 'grid',
+    gridTemplateColumns: 'auto 1fr',
+    gap: '0.9rem',
+    alignItems: 'center',
+  },
+  scoreValue: {
+    fontSize: '2.1rem',
+    fontWeight: 800,
+    lineHeight: 1,
+    color: '#111827',
+    minWidth: 88,
+  },
+  scoreBarWrap: {
+    width: '100%',
+  },
+  scoreBarTrack: {
+    position: 'relative',
+    width: '100%',
+    height: 16,
+    borderRadius: 999,
+    overflow: 'hidden',
+    background: '#e5e7eb',
+    boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.08)',
+  },
+  scoreBarFillContainer: {
+    position: 'absolute',
+    inset: 0,
+  },
+  scoreBarFill: {
+    height: '100%',
+    borderRadius: 999,
+    background: 'linear-gradient(90deg, #ef4444 0%, #f59e0b 50%, #22c55e 100%)',
+    transition: 'width 800ms cubic-bezier(0.22, 1, 0.36, 1)',
+  },
+  analysisHint: {
+    margin: '0.75rem 0 0',
+    fontSize: '0.82rem',
+    color: '#6b7280',
+  },
+  angleValueRow: {
+    display: 'grid',
+    gap: '0.85rem',
+  },
+  angleValue: {
+    fontSize: '2rem',
+    fontWeight: 800,
+    lineHeight: 1,
+  },
+  angleBandWrap: {
+    display: 'grid',
+    gap: '0.45rem',
+  },
+  angleScale: {
+    position: 'relative',
+    height: 18,
+    borderRadius: 999,
+    background: 'linear-gradient(90deg, #fee2e2 0%, #fef3c7 35%, #dcfce7 100%)',
+    overflow: 'hidden',
+  },
+  angleIdealBand: {
+    position: 'absolute',
+    top: 2,
+    bottom: 2,
+    borderRadius: 999,
+    background: 'rgba(34, 197, 94, 0.28)',
+    border: '1px solid rgba(34, 197, 94, 0.55)',
+  },
+  angleMarkerRail: {
+    position: 'absolute',
+    inset: '50% 0 auto 0',
+    height: 2,
+    transform: 'translateY(-50%)',
+    background: 'rgba(17, 24, 39, 0.12)',
+  },
+  angleMarker: {
+    position: 'absolute',
+    top: '50%',
+    width: 14,
+    height: 14,
+    borderRadius: '50%',
+    transform: 'translate(-50%, -50%)',
+    background: '#111827',
+    boxShadow: '0 0 0 4px rgba(17, 24, 39, 0.14)',
+    transition: 'left 800ms cubic-bezier(0.22, 1, 0.36, 1), opacity 250ms ease',
+  },
+  angleScaleLabels: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: '0.75rem',
+    fontSize: '0.78rem',
+    color: '#6b7280',
+  },
+  feedbackBlock: {
+    gridColumn: '1 / -1',
+  },
+  feedbackText: {
+    margin: 0,
+    color: '#374151',
+    fontSize: '0.95rem',
+    lineHeight: 1.6,
+    whiteSpace: 'pre-wrap',
   },
   chartWrap: {
     maxWidth: 280,

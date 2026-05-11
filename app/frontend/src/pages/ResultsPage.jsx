@@ -281,7 +281,8 @@ export default function ResultsPage() {
       <div style={s.card}>
         <h3 style={s.cardTitle}>Annotated Video</h3>
         {videoSrc ? (
-          <video key={videoSrc} controls width="100%" preload="auto" style={s.video} src={videoSrc} type="video/mp4">
+          <video key={videoSrc} controls width="100%" preload="metadata" style={s.video}>
+            <source src={videoSrc} type="video/mp4" />
             Your browser does not support HTML5 video.
           </video>
         ) : (

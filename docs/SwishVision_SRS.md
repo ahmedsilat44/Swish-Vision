@@ -2,7 +2,7 @@
 
 ## SwishVision — Basketball Analytics Platform
 
-**Version:** 1.00
+**Version:** 1.10
 
 | Project Team | |
 |---|---|
@@ -11,7 +11,7 @@
 | Muhammad Ahmed Silat | |
 | Syed Muhammad Sameer Hassan | |
 
-| Submission Date | TBD |
+| Submission Date | 11th May 2026 |
 |---|---|
 
 ---
@@ -20,7 +20,9 @@
 
 | Version | Name of Person | Date | Description of Change |
 |---|---|---|---|
-| 1.00 | Ahmed Silat | 16th March | Initial draft — project proposal translated to SRS |
+| 1.00 | Ahmed Silat | 16th March 2026 | Initial draft — project proposal translated to SRS |
+| 1.10 | Minhaj ul Hassan | 11th May 2026 | Post-implementation update — locked in tech stack (FastAPI / React / SQL Server / Celery+Redis / JWT), reflected delivered scope, marked all use cases as implemented |
+| 1.11 | Minhaj ul Hassan | 11th May 2026 | Corrected output codec to H.264 MP4 (transcoded via `imageio-ffmpeg`), added `imageio-ffmpeg`, `supervision`, and `pandas` to the Software Interfaces inventory |
 
 ---
 
@@ -149,7 +151,7 @@ Evaluates the project from an academic standpoint. Requires documentation, worki
 - **RAM:** Minimum 4GB; 8GB+ recommended for smooth inference
 - **Storage:** Minimum 10GB for model files, uploaded videos, and generated outputs
 - **Network:** Standard HTTPS internet connection for the client; server requires sufficient bandwidth for video uploads
-- **Output Codec:** XVID (AVI container) for processed output videos
+- **Output Codec:** H.264 in MP4 container — frames are written with OpenCV's `mp4v` fourcc and then transcoded to H.264 (`yuv420p`, `+faststart`) via `imageio-ffmpeg` so the result plays directly in `<video>` elements in Chrome / Firefox / Safari / Edge. If `imageio-ffmpeg` is unavailable the pipeline keeps the `mp4v` output as a fallback (not browser-playable).
 
 ### 2.7 System Constraints
 
@@ -180,15 +182,15 @@ An **Incremental Development** methodology will be used. This choice is appropri
 - Early increments (video upload + basic results) can be demonstrated to the supervisor for feedback before more advanced features (dashboard, history, detailed analytics) are built.
 - The team can parallelize work on the backend processing pipeline and the frontend interface.
 
-**Planned Increments:**
+**Delivered Increments (all completed as of 11th May 2026):**
 
-| Increment | Deliverable |
-|---|---|
-| 1 | User registration/login + video upload endpoint |
-| 2 | Background processing integration — pipeline runs on uploaded video |
-| 3 | Shot detection results displayed on frontend |
-| 4 | Pose/form analysis results and report generation |
-| 5 | Session history and longitudinal dashboard |
+| Increment | Deliverable | Status |
+|---|---|---|
+| 1 | User registration/login + video upload endpoint | ✅ Delivered |
+| 2 | Background processing integration — pipeline runs on uploaded video via Celery | ✅ Delivered |
+| 3 | Shot detection results displayed on frontend (React) | ✅ Delivered |
+| 4 | Pose/form analysis results and report generation | ✅ Delivered |
+| 5 | Session history and longitudinal dashboard | ✅ Delivered |
 
 ---
 
@@ -218,12 +220,17 @@ Requirements were gathered through the following approaches:
 - **Python 3.8+** — core runtime for the CV pipeline
 - **Ultralytics YOLOv8** (`ultralytics>=8.0.0`) — object detection and pose estimation
 - **PyTorch 2.0+** (`torch>=2.0.0`, `torchvision>=0.15.0`) — deep learning inference backend
-- **OpenCV** (`opencv-python>=4.8.0`) — video reading, frame processing, and output writing (XVID codec)
+- **OpenCV** (`opencv-python>=4.8.0`) — video reading, frame processing, and initial frame writing (`mp4v` fourcc); final transcoded H.264 output is produced by `imageio-ffmpeg`
+- **imageio-ffmpeg** — bundles a static `ffmpeg` binary used to transcode pipeline output from `mp4v` to browser-playable H.264 MP4
+- **supervision** + **pandas** — used by the trackers (`BallTracker`, `RimTracker`, `HumanTracker`)
 - **NumPy** (`numpy>=1.24.0`) — array operations and numerical calculations
 - **Matplotlib** (`matplotlib>=3.7.0`) — plotting and visualization within reports
-- **Web Framework (e.g., Flask or ASP.NET)** — to expose the pipeline as a web service
-- **Database (SQL Server)** — to store user accounts, session metadata, and report data
-- **Task Queue (e.g., Celery + Redis, or equivalent)** — to manage asynchronous video processing jobs
+- **FastAPI** (`fastapi==0.135.3`, `uvicorn==0.42.0`) — backend web framework and ASGI server
+- **React** (Create React App, Node.js 18+) — frontend single-page application served on port 3000 in dev with a proxy to the FastAPI backend on port 8000
+- **SQLAlchemy** (`SQLAlchemy==2.0.48`) + **Alembic** (`alembic==1.14.1`) — ORM and migrations
+- **Microsoft SQL Server 2019+** with **pyodbc** (`pyodbc==5.3.0`, ODBC Driver 17 for SQL Server) — relational store for users, sessions, reports, shot events, and angle frames
+- **Celery** (`celery==5.6.3`) + **Redis 7+** (`redis==5.2.1`) — asynchronous task queue and message broker for video processing jobs (Celery worker uses `--pool=solo` on Windows)
+- **JWT authentication** — `python-jose[cryptography]==3.5.0` for tokens, `passlib[bcrypt]==1.7.4` + `bcrypt==4.0.1` for password hashing
 - **Web Browser** — Chrome, Firefox, Safari, or Edge (client side)
 
 ### 5.3 Communications Interfaces

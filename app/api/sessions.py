@@ -235,6 +235,8 @@ def get_shots(session: SessionModel = Depends(verify_session_ownership), db: Ses
             "outcome": normalize_result(s.result),
             "sew_angle": s.elbow_angle,
             "esh_angle": s.shoulder_angle,
+            "elbow_angle_at_release": s.elbow_angle,
+            "release_angle": s.shoulder_angle,
         }
         for s in shots
     ]
@@ -303,7 +305,7 @@ def get_output_video(
     
     if not os.path.exists(video_path):
         logging.error(f"Video file not found: {video_path}")
-        raise HTTPException(status_code=404, detail=f"Output video not found at {video_path}")
+        raise HTTPException(status_code=404, detail="Output video not found")
 
     file_size = os.path.getsize(video_path)
     if file_size == 0:

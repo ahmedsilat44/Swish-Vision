@@ -305,7 +305,7 @@ def get_output_video(
     
     if not os.path.exists(video_path):
         logging.error(f"Video file not found: {video_path}")
-        raise HTTPException(status_code=404, detail=f"Output video not found at {video_path}")
+        raise HTTPException(status_code=404, detail="Output video not found")
 
     file_size = os.path.getsize(video_path)
     if file_size == 0:

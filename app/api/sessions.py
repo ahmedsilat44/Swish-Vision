@@ -235,6 +235,8 @@ def get_shots(session: SessionModel = Depends(verify_session_ownership), db: Ses
             "outcome": normalize_result(s.result),
             "sew_angle": s.elbow_angle,
             "esh_angle": s.shoulder_angle,
+            "elbow_angle_at_release": s.elbow_angle,
+            "release_angle": s.shoulder_angle,
         }
         for s in shots
     ]

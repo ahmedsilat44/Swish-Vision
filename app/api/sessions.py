@@ -192,18 +192,29 @@ def get_report(
         raise HTTPException(status_code=404, detail="Report not available yet. Session may still be processing.")
     total = report.total_shots or 0
     makes = report.makes or 0
-    avg_angle = (
+    
+    # Calculate average SEW angle (stored in elbow_angle column)
+    avg_sew_angle = (
+        db.query(func.avg(ShotEvent.elbow_angle))
+        .filter(ShotEvent.session_id == session.id, ShotEvent.elbow_angle.isnot(None))
+        .scalar()
+    )
+    
+    # Calculate average ESH angle (stored in shoulder_angle column)
+    avg_esh_angle = (
         db.query(func.avg(ShotEvent.shoulder_angle))
         .filter(ShotEvent.session_id == session.id, ShotEvent.shoulder_angle.isnot(None))
         .scalar()
     )
+    
     return ReportResponse(
         session_id=session.id,
         shot_percentage=round(makes / total * 100, 1) if total > 0 else None,
         shots_made=makes,
         shots_missed=report.misses or 0,
         total_shots=total,
-        avg_release_angle=round(avg_angle, 1) if avg_angle is not None else None,
+        avg_sew_angle=round(avg_sew_angle, 1) if avg_sew_angle is not None else None,
+        avg_esh_angle=round(avg_esh_angle, 1) if avg_esh_angle is not None else None,
         feedback_text=report.raw_text,
     )
 
@@ -222,8 +233,10 @@ def get_shots(session: SessionModel = Depends(verify_session_ownership), db: Ses
         {
             "shot_number": s.shot_number,
             "outcome": normalize_result(s.result),
-            "release_angle": s.shoulder_angle,
+            "sew_angle": s.elbow_angle,
+            "esh_angle": s.shoulder_angle,
             "elbow_angle_at_release": s.elbow_angle,
+            "release_angle": s.shoulder_angle,
         }
         for s in shots
     ]
@@ -281,14 +294,39 @@ def get_output_video(
     else:
         raise HTTPException(status_code=401, detail="Authentication required")
 
-    if not session.output_path or not os.path.exists(session.output_path):
-        raise HTTPException(status_code=404, detail="Output video not available")
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+        
+    if not session.output_path:
+        raise HTTPException(status_code=404, detail="Output video path not set")
+    
+    video_path = session.output_path
+    logging.info(f"Attempting to serve video from: {video_path}")
+    
+    if not os.path.exists(video_path):
+        logging.error(f"Video file not found: {video_path}")
+        raise HTTPException(status_code=404, detail="Output video not found")
 
-    mime_type, _ = mimetypes.guess_type(session.output_path)
+    file_size = os.path.getsize(video_path)
+    if file_size == 0:
+        logging.error(f"Video file is empty: {video_path}")
+        raise HTTPException(status_code=500, detail="Output video is empty")
+    
+    logging.info(f"Serving video file: {video_path} (size: {file_size} bytes)")
+    
+    # Force video/mp4 for MP4 files
+    if video_path.lower().endswith('.mp4'):
+        media_type = "video/mp4"
+    else:
+        mime_type, _ = mimetypes.guess_type(video_path)
+        media_type = mime_type or "video/mp4"
+    
+    logging.info(f"Using media type: {media_type}")
+    
     return FileResponse(
-        path=session.output_path,
-        media_type=mime_type or "application/octet-stream",
-        filename=os.path.basename(session.output_path),
+        path=video_path,
+        media_type=media_type,
+        filename=os.path.basename(video_path),
     )
 
 
@@ -299,23 +337,42 @@ def get_angles(
 ):
     from app.models.angle_frame import AngleFrame
 
-    rows = (
+    # Get all angle frames
+    angle_rows = (
         db.query(AngleFrame)
         .filter(AngleFrame.session_id == session.id)
         .order_by(AngleFrame.frame_number)
         .all()
     )
+    
+    # Get all shot events to map frames to shots
+    shot_events = (
+        db.query(ShotEvent)
+        .filter(ShotEvent.session_id == session.id)
+        .order_by(ShotEvent.shot_number)
+        .all()
+    )
+    
+    # Create a frame -> shot_number mapping
+    frame_to_shot = {}
+    for shot in shot_events:
+        if shot.start_frame is not None and shot.end_frame is not None:
+            for frame_num in range(shot.start_frame, shot.end_frame + 1):
+                frame_to_shot[frame_num] = shot.shot_number
+    
+    # Build response with shot numbers properly mapped
     frames = [
         {
-            "shot_number": idx + 1,
+            "shot_number": frame_to_shot.get(row.frame_number, 1),  # Default to 1 if not found
             "frame_number": row.frame_number,
             "elbow_angle": row.elbow_angle,
             "knee_angle": row.knee_angle,
             "shoulder_angle": row.shoulder_angle,
             "outcome": None,
         }
-        for idx, row in enumerate(rows)
+        for row in angle_rows
     ]
+    
     return {"session_id": session.id, "frames": frames}
 
 @router.post("/{session_id}/retry", response_model=SessionResponse)

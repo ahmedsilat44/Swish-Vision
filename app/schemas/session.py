@@ -31,8 +31,8 @@ class SessionListResponse(BaseModel):
 class ShotDetail(BaseModel):
     shot_number: int
     outcome: str  # "made" or "missed"
-    release_angle: Optional[float] = None
-    elbow_angle_at_release: Optional[float] = None
+    sew_angle: Optional[float] = None  # Shoulder-Elbow-Wrist angle at release
+    esh_angle: Optional[float] = None  # Elbow-Shoulder-Hip angle at release
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -53,7 +53,8 @@ class ReportResponse(BaseModel):
     shots_made: int = 0
     shots_missed: int = 0
     total_shots: int = 0
-    avg_release_angle: Optional[float] = None
+    avg_sew_angle: Optional[float] = None  # Average Shoulder-Elbow-Wrist angle
+    avg_esh_angle: Optional[float] = None  # Average Elbow-Shoulder-Hip angle
     feedback_text: Optional[str] = None
 
 

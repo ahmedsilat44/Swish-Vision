@@ -79,16 +79,25 @@ export function ShotsTable() {
     fetchShots();
   }, [selectedSessionId, token, navigate]);
 
-  if (loadingSessions) return <div>Loading sessions...</div>;
-  if (error) return <div>Error: {error}</div>;
+  if (loadingSessions) return <div style={{ minHeight: "calc(100vh - 56px)", background: "#0a0a0f", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>Loading sessions...</div>;
+  if (error) return <div style={{ minHeight: "calc(100vh - 56px)", background: "#0a0a0f", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>Error: {error}</div>;
 
   const makes = shotSummary.makes;
   const totalShots = shotSummary.totalShots;
   const percentage = totalShots ? ((makes / totalShots) * 100).toFixed(1) : "0.0";
 
   return (
-    <div style={{ padding: "2rem" }}>
-      <h2>Shot Results</h2>
+    <div style={{
+      minHeight: "calc(100vh - 56px)",
+      background: "#0a0a0f",
+      color: "#fff",
+      padding: "2rem",
+      fontFamily: "'DM Sans', sans-serif",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+    }}>
+      <h2 style={{ color: "#fff", marginBottom: "1.5rem" }}>Shot Results</h2>
       <div
         style={{
           marginBottom: "1rem",
@@ -96,7 +105,8 @@ export function ShotsTable() {
           border: "1px solid #1e1e2e",
           borderRadius: "14px",
           padding: "1rem 1.25rem",
-          maxWidth: "640px",
+          width: "100%",
+          maxWidth: "760px",
         }}
       >
         <p style={{ color: "#888", fontSize: "0.72rem", letterSpacing: "1.5px", textTransform: "uppercase", margin: "0 0 0.6rem" }}>
@@ -115,6 +125,7 @@ export function ShotsTable() {
             color: "#fff",
             fontSize: "0.95rem",
             outline: "none",
+            colorScheme: "dark",
           }}
         >
           <option value="">Choose a session</option>
@@ -124,15 +135,15 @@ export function ShotsTable() {
             </option>
           ))}
         </select>
-        <p style={{ color: "#444", fontSize: "0.72rem", marginTop: "0.6rem", marginBottom: 0 }}>
+        <p style={{ color: "#666", fontSize: "0.72rem", marginTop: "0.6rem", marginBottom: 0 }}>
           The table will appear after you pick a session.
         </p>
       </div>
 
       {!selectedSessionId ? null : loading ? (
-        <div>Loading shots...</div>
+        <div style={{ color: "#aaa", fontSize: "0.95rem" }}>Loading shots...</div>
       ) : (
-        <>
+        <div style={{ width: "100%", maxWidth: "760px" }}>
           <div style={{ marginBottom: "0.75rem", color: "#888", fontSize: "0.9rem" }}>
             Session ID: {selectedSessionId}
           </div>
@@ -143,20 +154,21 @@ export function ShotsTable() {
           <table style={{
             width: "100%",
             borderCollapse: "collapse",
-            border: "1px solid #1e1e2e"
+            border: "1px solid #1e1e2e",
+            background: "#13131a",
           }}>
             <thead>
-              <tr style={{ background: "#13131a", borderBottom: "1px solid #1e1e2e" }}>
-                <th style={{ padding: "0.75rem", textAlign: "left" }}>Shot #</th>
-                <th style={{ padding: "0.75rem", textAlign: "left" }}>Outcome</th>
-                <th style={{ padding: "0.75rem", textAlign: "left" }}>Elbow Angle (°)</th>
-                <th style={{ padding: "0.75rem", textAlign: "left" }}>Shoulder Angle (°)</th>
+              <tr style={{ background: "#0d0d14", borderBottom: "1px solid #1e1e2e" }}>
+                <th style={{ padding: "0.75rem", textAlign: "left", color: "#fff", fontWeight: 600 }}>Shot #</th>
+                <th style={{ padding: "0.75rem", textAlign: "left", color: "#fff", fontWeight: 600 }}>Outcome</th>
+                <th style={{ padding: "0.75rem", textAlign: "left", color: "#fff", fontWeight: 600 }}>SEW Angle (°)</th>
+                <th style={{ padding: "0.75rem", textAlign: "left", color: "#fff", fontWeight: 600 }}>ESH Angle (°)</th>
               </tr>
             </thead>
             <tbody>
               {shots.map((shot) => (
                 <tr key={shot.shot_number} style={{ borderBottom: "1px solid #1e1e2e" }}>
-                  <td style={{ padding: "0.75rem" }}>{shot.shot_number}</td>
+                  <td style={{ padding: "0.75rem", color: "#ccc" }}>{shot.shot_number}</td>
                   <td
                     style={{
                       padding: "0.75rem",
@@ -165,17 +177,17 @@ export function ShotsTable() {
                   >
                     {(shot.outcome || (shot.result === "make" ? "made" : shot.result === "miss" ? "missed" : "missed")).toUpperCase()}
                   </td>
-                  <td style={{ padding: "0.75rem" }}>
-                    {shot.elbow_angle_at_release?.toFixed(1) || "—"}
+                  <td style={{ padding: "0.75rem", color: "#ccc" }}>
+                    {shot.sew_angle != null ? `${shot.sew_angle.toFixed(1)}` : "—"}
                   </td>
-                  <td style={{ padding: "0.75rem" }}>
-                    {shot.release_angle?.toFixed(1) || "—"}
+                  <td style={{ padding: "0.75rem", color: "#ccc" }}>
+                    {shot.esh_angle != null ? `${shot.esh_angle.toFixed(1)}` : "—"}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </>
+        </div>
       )}
     </div>
   );

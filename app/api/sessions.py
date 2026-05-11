@@ -356,7 +356,11 @@ def get_angles(
     # Create a frame -> shot_number mapping
     frame_to_shot = {}
     for shot in shot_events:
-        if shot.start_frame is not None and shot.end_frame is not None:
+        if (
+            shot.start_frame is not None
+            and shot.end_frame is not None
+            and shot.end_frame >= shot.start_frame
+        ):
             for frame_num in range(shot.start_frame, shot.end_frame + 1):
                 frame_to_shot[frame_num] = shot.shot_number
     

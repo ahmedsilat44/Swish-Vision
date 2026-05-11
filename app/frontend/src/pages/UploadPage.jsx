@@ -249,7 +249,7 @@ const styles = {
   uploadBtn: {
     width: '100%',
     padding: '14px',
-    backgroundColor: 'linear-gradient(135deg, #ff6400, #ff9a00)',
+    backgroundColor: '#ff6400',
     background: 'linear-gradient(135deg, #ff6400, #ff9a00)',
     color: '#fff',
     border: 'none',

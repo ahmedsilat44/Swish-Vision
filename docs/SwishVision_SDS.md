@@ -2,7 +2,7 @@
 
 ## SwishVision — Basketball Analytics Platform
 
-**Version:** 1.00
+**Version:** 1.10
 
 | Project Team | |
 |---|---|
@@ -11,7 +11,7 @@
 | Muhammad Ahmed Silat | |
 | Syed Muhammad Sameer Hassan | |
 
-| Submission Date | TBD |
+| Submission Date | 11th May 2026 |
 |---|---|
 
 ---
@@ -20,7 +20,9 @@
 
 | Version | Name of Person | Date | Description of Change |
 |---|---|---|---|
-| 1.00 | Ahmed Silat | 16th March | Initial draft — architecture and design documented |
+| 1.00 | Ahmed Silat | 16th March 2026 | Initial draft — architecture and design documented |
+| 1.10 | Minhaj ul Hassan | 11th May 2026 | Post-implementation update — finalised technology stack table, replaced PostgreSQL with SQL Server (pyodbc), updated file system layout to match shipped `app/` structure, updated environment variables to match `env.example` |
+| 1.11 | Minhaj ul Hassan | 11th May 2026 | Corrected output codec across the document — pipeline writes H.264 `.mp4` (via `mp4v` then `imageio-ffmpeg` transcode), not XVID `.avi`. Updated output filename pattern to the actual `output_session_{id}_{n}_processed.mp4` / `session_{id}_{n}_report.txt`. |
 
 ---
 
@@ -112,10 +114,10 @@ The pipeline executes the following 12 steps: (1) frame extraction via OpenCV, (
 - Pre-trained model files are available on the server under `models/`: `best.pt` (~43MB, fine-tuned YOLOv8 for ball/rim detection) and `yolov8m-pose.pt` (~78MB, Ultralytics pretrained medium pose model).
 - Additional model variants (`bestOld.pt`, `bestYT.pt`, `ballRim.pt`) exist but are not used in the primary pipeline.
 - Video storage is local filesystem-based for the current version. Cloud storage is acknowledged as a future migration path.
-- A relational database is available.
+- A Microsoft SQL Server 2019+ instance is available (Windows trusted connection or SQL auth) with the appropriate ODBC driver installed locally.
 - The server environment has Python 3.8+, `torch>=2.0.0`, `ultralytics>=8.0.0`, `opencv-python>=4.8.0`, `numpy>=1.24.0`, and `matplotlib>=3.7.0` installed.
 - The task queue uses Celery with Redis (or an equivalent) for managing background processing jobs.
-- Output videos are written in XVID codec as `.avi` files. The pipeline's `write_video()` function in `utils/vid_utils.py` handles this.
+- Output videos are written in two stages: `utils/vid_utils.py::write_video()` first writes frames as `.mp4` using OpenCV's `mp4v` fourcc, then transcodes to H.264 (`libx264`, `yuv420p`, `+faststart`) using the `ffmpeg` binary bundled by `imageio-ffmpeg`. The H.264 step is required for the React `<video>` player to play the file directly; if `imageio-ffmpeg` is missing the pipeline falls back to keeping the `mp4v` output, which most browsers will not play.
 - Intermediate data files (`angs.txt`, `xy_coords.txt`, `detections.txt`, `ball_locl.txt`) produced during processing are treated as transient and are not persisted to the database.
 - The `stubs_utils.py` module can be used to cache and reload intermediate tracking results, avoiding re-inference during development and testing.
 
@@ -123,7 +125,7 @@ The pipeline executes the following 12 steps: (1) frame extraction via OpenCV, (
 
 - **Model output variability:** The accuracy of ball and pose detection varies with video quality, lighting, and camera angle. Input should be 720p minimum at a side-on angle. If a video produces no detectable shots, the report will reflect zero detections — the pipeline handles this gracefully.
 - **Processing time unpredictability:** Inference time varies significantly based on video length and GPU availability. The README notes CUDA-compatible GPU is recommended; CPU-only will be substantially slower. The async job queue decouples upload from results, but the UI must communicate expected wait times clearly.
-- **File storage growth:** Uploaded videos and XVID `.avi` output files can be large. Without a cleanup or archival policy, disk usage will grow unbounded. A retention policy should be defined before production deployment.
+- **File storage growth:** Uploaded videos and H.264 `.mp4` output files can be large. Without a cleanup or archival policy, disk usage will grow unbounded. A retention policy should be defined before production deployment.
 - **Interpolation artefacts:** The ball track interpolation step (`interpolate_missing_tracks()`) can introduce false positives for short missing segments. This is a known limitation acknowledged in the existing codebase.
 - **Shot start detection sensitivity:** The `shot_started()` function in `utils/ball_hand.py` depends on pose keypoints and ball-hand distance estimates. Edge cases (e.g., player in unusual posture, occluded hand) may cause missed or duplicate shot start detections.
 - **Multiple model variants:** Several model files exist (`best.pt`, `bestOld.pt`, `bestYT.pt`, `ballRim.pt`). The web layer must use `best.pt` as the canonical production model; loading the wrong model variant would silently produce degraded results.
@@ -156,8 +158,8 @@ SwishVision follows a three-tier architecture:
        | File I/O
        |
 [ Storage Layer ]
-   - Database (PostgreSQL)
-   - Video File Store (local filesystem or S3)
+   - Database (Microsoft SQL Server via pyodbc)
+   - Video File Store (local filesystem: app/uploads/, output_videos/)
 ```
 
 The client browser communicates exclusively with the Web Application Server over HTTPS. Video processing is offloaded to a Background Worker via a task queue. The worker writes results to the database and file system, which the web server then reads and serves to the client.
@@ -193,14 +195,15 @@ A browser-based UI consuming the REST API. Key views: Landing/Login, Registratio
 
 | Layer | Technology |
 |---|---|
-| Frontend | TBD |
-| Backend Framework | TBD |
-| Task Queue | TBD |
-| Message Broker | TBD |
-| Database | SQL Server |
-| CV Pipeline | Python, PyTorch, Ultralytics YOLOv8, OpenCV |
-| Authentication | TBD |
-| Video Storage | Local filesystem |
+| Frontend | React 18 (Create React App), JavaScript, served by Node.js dev server in development; built static bundle in production |
+| Backend Framework | FastAPI 0.135 on Uvicorn 0.42 (ASGI) |
+| ORM / Migrations | SQLAlchemy 2.0 + Alembic 1.14 |
+| Task Queue | Celery 5.6 (worker run with `--pool=solo` on Windows) |
+| Message Broker | Redis 7+ (`redis://localhost:6379/0`) |
+| Database | Microsoft SQL Server 2019+ via `pyodbc` (`mssql+pyodbc` driver, ODBC Driver 17 for SQL Server) |
+| CV Pipeline | Python 3.8+, PyTorch ≥2.0, Ultralytics YOLOv8 ≥8.0, OpenCV ≥4.8 |
+| Authentication | JWT (HS256) via `python-jose`; passwords hashed with `bcrypt` (`passlib`) |
+| Video Storage | Local filesystem — `app/uploads/` (raw uploads) and `output_videos/` (annotated H.264 `.mp4`, named `output_session_{id}_{n}_processed.mp4`); reports written to `reports/session_{id}_{n}_report.txt` |
 
 ---
 
@@ -356,7 +359,7 @@ HumanTracksDrawer                                   # drawers/human_tracks_drawe
 
 # utils/vid_utils.py
 read_video(path: str) → (frames: list, fps: float)
-write_video(frames: list, path: str, fps: float) → void   # XVID codec, .avi output
+write_video(frames: list, path: str, fps: float) → void   # mp4v → transcoded to H.264 .mp4 via imageio-ffmpeg
 
 # utils/ball_hand.py
 ball_hand(ball_loco, points, frames) → list         # Returns ball_left_frames
@@ -379,7 +382,7 @@ Session
   - user_id: UUID
   - video_filename: str                             # Original upload name
   - video_path: str                                 # Server storage path
-  - output_video_path: str                          # XVID .avi output path
+  - output_video_path: str                          # H.264 .mp4 output path
   - report_file_path: str                           # Path to .txt report
   - status: str                                     # queued|processing|completed|failed
   - upload_time: datetime
@@ -505,7 +508,7 @@ API Server → Player Browser: Video stream (chunked)
 19. Run `HumanTracksDrawer.analysis(frames, angles, ball_left_frames, shot_starts, report_path)` → annotated frames + report `.txt` written to `reports/`
 20. Run `ShotTracker.detect_shot(frames, interpolated_ball_tracks, rim_tracks)`
 21. Run `ShotTracker.draw_shots(frames)` → final annotated frames
-22. Run `write_video(frames, output_path, fps)` → XVID `.avi` written to `output_videos/`
+22. Run `write_video(frames, output_path, fps)` → H.264 `.mp4` written to `output_videos/output_session_{id}_{n}_processed.mp4` (via `mp4v` then `imageio-ffmpeg` transcode to `libx264`)
 23. Parse `{vidname}_report.txt`; INSERT into `reports`, `shot_events`, `angle_frames` tables
 24. UPDATE session status = `completed`, set `completed_time`
 25. Clean up transient intermediate files (`angs.txt`, `xy_coords.txt`, `detections.txt`, `ball_locl.txt`)
@@ -597,30 +600,59 @@ Swish-Vision/                        ← Project root
 ├── models/                          ← Model weights (best.pt, yolov8m-pose.pt, variants)
 │
 ├── input_videos/                    ← Worker copies uploaded video here before processing
-├── output_videos/                   ← Pipeline writes XVID .avi output here
+├── output_videos/                   ← Pipeline writes H.264 .mp4 output here
 ├── reports/                         ← Pipeline writes {vidname}_report.txt here
 │
 ├── Basketball-1/                    ← Training dataset (Roboflow, not used at runtime)
 ├── runs/                            ← YOLO training run history (not used at runtime)
 │
-└── [Web Application Layer]          ← New components added for web version
-    ├── app/                         ← FastAPI/Flask application
-    │   ├── api/                     ← Route handlers
-    │   ├── models/                  ← SQLAlchemy ORM models
-    │   ├── tasks/                   ← Celery task definitions (wraps main_pipeline)
-    │   └── frontend/                ← HTML/CSS/JS frontend
-    ├── uploads/                     ← Raw user-uploaded videos (pre-processing)
-    └── .env                         ← Environment variables
+└── app/                            ← Web application layer (delivered)
+    ├── main.py                     ← FastAPI app factory + lifespan
+    ├── config.py                   ← Pydantic Settings (reads .env)
+    ├── database.py                 ← SQLAlchemy engine + SessionLocal (mssql+pyodbc)
+    ├── api/
+    │   ├── auth.py                 ← /api/auth/* (register, login, logout, JWT)
+    │   ├── sessions.py             ← /api/sessions/* (upload, list, get, delete, report, shots, video)
+    │   └── dashboard.py            ← /api/dashboard/* (summary, trends)
+    ├── core/
+    │   ├── security.py             ← bcrypt + JWT helpers, get_current_user dependency
+    │   └── middleware.py           ← CORS, security headers, optional HTTPS redirect
+    ├── models/                     ← SQLAlchemy ORM models
+    │   ├── user.py
+    │   ├── session.py
+    │   ├── report.py
+    │   ├── shot_event.py
+    │   ├── angle_frame.py
+    │   └── revoked_token.py
+    ├── schemas/                    ← Pydantic request/response schemas
+    ├── tasks/
+    │   ├── pipeline_task.py        ← Celery app + process_video task
+    │   └── report_parser.py        ← Parses {vidname}_report.txt → DB rows
+    ├── migrations/                 ← Alembic environment + versions/
+    ├── frontend/                   ← React (Create React App)
+    │   ├── package.json
+    │   ├── public/
+    │   └── src/                    ← App.js, AuthContext.js, NavBar.jsx, pages/, components/
+    ├── uploads/                    ← Raw user-uploaded videos (pre-processing)
+    ├── requirements.txt            ← Backend Python dependencies
+    └── DEVELOPER_README.md         ← Web-app-specific developer guide
 ```
 
 ### Appendix C — Environment Variables
 
 | Variable | Description |
 |---|---|
-| `DATABASE_URL` | Connection string for PostgreSQL |
-| `REDIS_URL` | Connection string for Redis broker |
-| `SECRET_KEY` | JWT signing secret |
-| `UPLOAD_DIR` | Absolute path for video uploads |
-| `OUTPUT_DIR` | Absolute path for processed outputs |
-| `MODEL_DIR` | Absolute path to model files |
-| `MAX_UPLOAD_SIZE_MB` | Maximum allowed video upload size |
+| `ENV` | Environment name: `development` \| `staging` \| `production` (controls HTTPS redirect middleware) |
+| `DB_SERVER` | SQL Server hostname/instance (e.g. `localhost`) |
+| `DB_NAME` | SQL Server database name (e.g. `SwishVision`) |
+| `DB_DRIVER` | ODBC driver name (e.g. `ODBC Driver 17 for SQL Server`) |
+| `DB_TRUSTED_CONNECTION` | `true` for Windows auth; `false` to use `DB_USERNAME`/`DB_PASSWORD` |
+| `DB_USERNAME` / `DB_PASSWORD` | SQL auth credentials (only when `DB_TRUSTED_CONNECTION=false`) |
+| `REDIS_URL` | Redis connection string for the Celery broker (e.g. `redis://localhost:6379/0`) |
+| `CELERY_RESULT_BACKEND` | Celery result backend URL (typically same as `REDIS_URL`) |
+| `SECRET_KEY` | JWT signing secret — must be replaced before any non-local deploy |
+| `ADMIN_RESET_KEY` | Shared secret required for `POST /api/auth/admin/force-reset-password` |
+| `UPLOAD_DIR` | Path for raw uploaded videos (default `app/uploads`) |
+| `OUTPUT_DIR` | Path for annotated H.264 `.mp4` outputs (default `output_videos`) |
+| `MODEL_DIR` | Path to YOLOv8 model weights (default `models`) |
+| `MAX_UPLOAD_SIZE_MB` | Maximum allowed video upload size in MB (default `500`) |
